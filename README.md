@@ -1,33 +1,31 @@
 # Cuepoint
 
-Music analytics dashboard with a plain-English UI. Runs on Cloudflare Pages.
+Music analytics dashboard with a plain-English UI. Runs on Cloudflare Workers (static assets + API).
 
 ## Layout
 
-- `public/index.html` — the dashboard (currently sample data)
+- `src/worker.js` — Worker entry: routes `/api/*` to the handlers below, serves `public/` for everything else, and runs the hourly snapshot cron
+- `public/index.html` — the dashboard (sample artists plus live search)
 - `functions/api/artist.js` — `/api/artist?q=<name>`: live lookup (MusicBrainz, Wikipedia pageviews, Last.fm) + daily snapshot
 - `functions/api/tracked.js` — `/api/tracked`: artists looked up so far
 - `functions/api/collect.js` — `/api/collect`: refreshes today's snapshot for up to 10 tracked artists per call
 - `functions/_lib.js` — shared data-source and storage code
 - Cloudflare D1 database `cuepoint` (bound as `DB` in `wrangler.toml`)
-- `wrangler.toml` — Cloudflare Pages config
+- `wrangler.toml` — Worker config (assets, D1 binding, cron)
 
-## Deploy (Git integration — recommended)
+## Deploy
 
-1. Push this folder to a GitHub repo (e.g. `cuepoint`).
-2. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git → pick the repo.
-3. Build command: *(leave empty)*. Build output directory: `public`.
-4. Save and deploy. Every push to `main` redeploys automatically.
+The repo is connected to the `cuepoint` Worker through Cloudflare Workers Builds: every push to `main` runs `npx wrangler deploy`.
 
-## Deploy from your machine
+From your machine instead:
 
 ```
 npm install -g wrangler
 wrangler login
-wrangler pages deploy public --project-name cuepoint
+wrangler deploy
 ```
 
-Check it's live: `https://<your-project>.pages.dev/api/health`
+Check it's live: `https://cuepoint.<your-subdomain>.workers.dev/api/health`
 
 ## Data sources
 
@@ -37,4 +35,4 @@ Check it's live: `https://<your-project>.pages.dev/api/health`
 | Wikipedia pageviews | daily page views, 1 year of history | open |
 | Last.fm | listeners, plays (snapshotted daily) | non-commercial unless you sign a Last.fm agreement |
 
-Last.fm is optional: add a secret named `LASTFM_KEY` in the Pages project settings.
+Last.fm is optional: add a secret named `LASTFM_KEY` in the Worker's Settings → Variables and Secrets.

@@ -1,11 +1,21 @@
 name = "cuepoint"
+main = "src/worker.js"
 compatibility_date = "2026-09-01"
-pages_build_output_dir = "public"
+
+# Static dashboard in public/; /api/* goes to the Worker first.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
 
 [[d1_databases]]
 binding = "DB"
 database_name = "cuepoint"
 database_id = "062a4cf6-c9c6-4eeb-8461-3ae889aae848"
 
-# Last.fm key is a secret: set LASTFM_KEY in Cloudflare → your Pages project →
+# Refresh daily snapshots for tracked artists (10 per run, skips ones already done today).
+[triggers]
+crons = ["7 * * * *"]
+
+# Last.fm key is a secret: set LASTFM_KEY in Cloudflare → Workers & Pages → cuepoint →
 # Settings → Variables and Secrets (type: Secret). Never commit it here.
