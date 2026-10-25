@@ -433,6 +433,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const parseDay=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
 const rolling=(arr,w)=>arr.map((_,i)=>{const a=arr.slice(Math.max(0,i-w+1),i+1);return a.reduce((s,x)=>s+x,0)/a.length});
 const sum=a=>a.reduce((s,x)=>s+x,0);
+const linkHost=u=>{try{return new URL(u).hostname.replace(/^www\./,"")}catch(e){return "Website"}};
 const hueColor=name=>{let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))%360;return `hsl(${h} 45% 45%)`};
 
 function liveMetrics(L,D){
@@ -461,7 +462,8 @@ function liveMetrics(L,D){
 
 function liveMomentum(L,mets){
   let score=50,have=false;
-  if(L.wiki&&L.wiki.days.length>=56){const r=L.wiki.days.map(x=>x.v),a=sum(r.slice(-28)),b=sum(r.slice(-56,-28));
+  // Same 30-vs-30-day comparison as the "What changed" story, so the verdict and the story agree.
+  if(L.wiki&&L.wiki.days.length>=60){const r=L.wiki.days.map(x=>x.v),a=sum(r.slice(-30)),b=sum(r.slice(-60,-30));
     if(a+b>0){score+=Math.max(-40,Math.min(40,pct(b||1,a)*40));have=true}}
   const lf=mets.find(m=>m.k==="lf_l");
   if(lf&&lf.values.length>1){score+=Math.max(-20,Math.min(20,lf.change*800));have=true}
@@ -490,7 +492,9 @@ function renderLive(){
   const m=liveMomentum(L,mets);drawGauge(m);
   const band=m==null?["Not enough data yet","There's no Wikipedia page or tracking history for this artist yet. Check back after a few days of daily snapshots."]
     :m>=70?["Heating up","More people are looking them up than a month ago. Something is building."]
-    :m>=45?["Holding steady","Attention is about level with last month."]
+    :m>=45?["Holding steady",(()=>{const r=L.wiki&&L.wiki.days.length>=60?L.wiki.days.map(x=>x.v):null;if(!r)return "Attention is about level with last month.";
+      const c=pct(sum(r.slice(-60,-30))||1,sum(r.slice(-30)));
+      return Math.abs(c)<.05?"Attention is about level with last month.":`Attention is ${c>0?"up":"down"} ${pctTxt(Math.abs(c)).replace("+","")} on last month. ${c>0?"A steady rise":"A gentle dip"}, not a breakout or a slump.`})()]
     :["Cooling off","Fewer people are looking them up than a month ago."];
   $("verdict-title").textContent=band[0];$("verdict-text").textContent=band[1];
 
@@ -530,7 +534,7 @@ function renderLive(){
   if(L.wiki)src.push([`Wikipedia`,`Daily page views for “${L.wiki.title}”`,L.wiki.url]);
   if(L.lastfm)src.push([`Last.fm`,`Listeners and plays, snapshotted daily`,L.lastfm.url]);
   $("srcs").innerHTML=src.map(([n,w,u])=>`<li><span><strong>${n}</strong> · ${esc(w)}</span><a href="${esc(u)}" target="_blank" rel="noopener">View source</a></li>`).join("")
-    +(a.links.length?`<li><span><strong>Official links</strong></span><span>${a.links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.kind)}</a>`).join(" · ")}</span></li>`:"");
+    +(a.links.length?`<li><span><strong>Official links</strong></span><span>${a.links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.kind==="Website"?linkHost(l.url):l.kind)}</a>`).join(" · ")}</span></li>`:"");
 }
 
 function drawLiveChart(){
