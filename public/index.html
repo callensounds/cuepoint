@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cuepoint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky control bar, then summary-first column — verdict, platform pulse, one big chart, then audience + playlists side by side, then peers. */
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --sunk:#E8ECF2; --ink:#141C28; --muted:#5A6779; --line:#D6DCE5;
+  --accent:#2C55E0; --accent-soft:#E3E9FD; --warm:#D9822B;
+  --good:#1F8A5B; --good-soft:#DDF2E7; --bad:#C2413A; --bad-soft:#F8E1DF; --flat:#6B7688; --flat-soft:#E7EAEF;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E131A; --surface:#161D27; --sunk:#1D2532; --ink:#E6EBF2; --muted:#94A1B4; --line:#2A3443;
+  --accent:#7B98FF; --accent-soft:#1F2A47; --warm:#F0A55A;
+  --good:#4CC28B; --good-soft:#163428; --bad:#F07A72; --bad-soft:#3A1E1D; --flat:#9AA5B6; --flat-soft:#232C39;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E131A; --surface:#161D27; --sunk:#1D2532; --ink:#E6EBF2; --muted:#94A1B4; --line:#2A3443;
+  --accent:#7B98FF; --accent-soft:#1F2A47; --warm:#F0A55A;
+  --good:#4CC28B; --good-soft:#163428; --bad:#F07A72; --bad-soft:#3A1E1D; --flat:#9AA5B6; --flat-soft:#232C39;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;font-weight:700}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;gap:16px;padding-block:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand svg{flex:none}
+.search{flex:1 1 220px;min-width:0;display:flex;align-items:center;gap:8px;background:var(--sunk);border:1px solid transparent;border-radius:999px;padding:6px 14px}
+.search:focus-within{border-color:var(--accent)}
+.search input{border:0;background:transparent;outline:0;width:100%;min-width:0}
+.seg{display:inline-flex;background:var(--sunk);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;padding:5px 12px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:500;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+
+.note{font-size:12.5px;color:var(--muted);padding-block:10px;display:flex;gap:8px;align-items:center}
+.note b{font-weight:600;color:var(--warm);text-transform:uppercase;letter-spacing:.08em;font-size:11px}
+
+main{display:grid;gap:20px;padding-block:8px 48px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.label{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sub{color:var(--muted);font-size:13.5px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
+.who{display:flex;gap:16px;align-items:center}
+.avatar{width:64px;height:64px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:24px;color:#fff}
+.who h1{font-size:clamp(26px,4vw,38px);letter-spacing:-.02em;line-height:1.1}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.verdict{margin-top:22px;display:flex;gap:18px;align-items:center}
+.gauge{flex:none}
+.verdict h2{font-size:22px}
+.verdict p{margin:4px 0 0;color:var(--muted);max-width:42ch}
+.story{display:grid;gap:12px}
+.story ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.story li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;padding:12px;border-radius:8px;background:var(--sunk)}
+.story .ico{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:14px}
+.story li p{margin:0}
+.story li strong{font-weight:600}
+
+/* pulse cards */
+.pulse{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 10px;display:grid;gap:4px;cursor:pointer;text-align:left;transition:border-color .15s}
+.card:hover{border-color:var(--muted)}
+.card[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.card .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.card .plat{font-size:12.5px;color:var(--muted);font-weight:500}
+.card .val{font-size:22px;font-weight:500}
+.card svg{width:100%;height:34px;display:block}
+.chip{display:inline-flex;align-items:center;gap:3px;font-family:var(--f-mono);font-size:11.5px;padding:1px 7px;border-radius:999px;white-space:nowrap}
+.chip.up{background:var(--good-soft);color:var(--good)}
+.chip.down{background:var(--bad-soft);color:var(--bad)}
+.chip.flat{background:var(--flat-soft);color:var(--flat)}
+
+/* main chart */
+.chart-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.chart-head h2{font-size:20px}
+.big{font-size:32px;font-weight:500;line-height:1.1}
+.chartbox{position:relative}
+#main-chart{width:100%;height:280px;display:block}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;padding:6px 9px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-110%)}
+.events{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.events span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--warm);margin-right:6px;vertical-align:0}
+
+/* two up */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:20px}
+.panel h2{font-size:19px}
+.panel header{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.cities{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.cities li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center}
+.cities .nm{font-weight:500}
+.cities .nm small{color:var(--muted);font-weight:400;margin-left:6px}
+.meter{grid-column:1/-1;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.callout{margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--accent-soft);font-size:13.5px}
+
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-weight:600;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 10px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 10px 10px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.pl{font-weight:500}
+.pl small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.status{font-size:11.5px;padding:2px 8px;border-radius:999px;white-space:nowrap;font-weight:500}
+.status.new{background:var(--accent-soft);color:var(--accent)}
+.status.climb{background:var(--good-soft);color:var(--good)}
+.status.drop{background:var(--bad-soft);color:var(--bad)}
+.status.hold{background:var(--flat-soft);color:var(--flat)}
+
+/* peers */
+.peers td:first-child{font-weight:500}
+.peers tr.me td{background:var(--accent-soft)}
+.peers tr.me td:first-child{border-radius:6px 0 0 6px;padding-left:8px}
+.peers tr.me td:last-child{border-radius:0 6px 6px 0}
+.mini{width:90px;height:24px;display:block}
+
+@media (max-width:860px){.hero,.two{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.seg button{padding:5px 9px}.verdict{flex-direction:column;align-items:flex-start}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="7" fill="var(--accent)"/><path d="M6 15h3l2-6 3 10 2-6h4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Cuepoint
+    </div>
+    <label class="search" for="artist-search">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="artist-search" list="artist-list" placeholder="Search an artist" autocomplete="off">
+      <datalist id="artist-list"></datalist>
+    </label>
+    <div class="seg" role="group" aria-label="Time range" id="range">
+      <button data-d="28" aria-pressed="false">28 days</button>
+      <button data-d="90" aria-pressed="true">90 days</button>
+      <button data-d="365" aria-pressed="false">1 year</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="note"><b>Sample data</b> Artists and numbers below are invented to show how the dashboard reads. Try Kira Sol, The Juniper Line or Marlowe Vance.</div>
+  <main>
+    <section class="panel hero" aria-label="Summary">
+      <div>
+        <div class="who">
+          <div class="avatar" id="avatar"></div>
+          <div style="min-width:0">
+            <h1 id="name"></h1>
+            <div class="tags" id="tags"></div>
+          </div>
+        </div>
+        <div class="verdict">
+          <svg class="gauge" id="gauge" width="92" height="92" viewBox="0 0 92 92" role="img"></svg>
+          <div>
+            <div class="label">Momentum</div>
+            <h2 id="verdict-title"></h2>
+            <p id="verdict-text"></p>
+          </div>
+        </div>
+      </div>
+      <div class="story">
+        <div class="label">What changed, in plain English</div>
+        <ol id="story"></ol>
+      </div>
+    </section>
+
+    <section aria-label="Platforms">
+      <div class="pulse" id="pulse"></div>
+    </section>
+
+    <section class="panel" aria-label="Trend">
+      <div class="chart-head">
+        <div>
+          <div class="label" id="chart-label"></div>
+          <div class="big num" id="chart-big"></div>
+          <div class="sub" id="chart-sub"></div>
+        </div>
+        <div class="sub">Pick any card above to chart it</div>
+      </div>
+      <div class="chartbox">
+        <svg id="main-chart" role="img" aria-label="Trend chart"></svg>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="events" id="events"></div>
+    </section>
+
+    <div class="two">
+      <section class="panel" aria-label="Audience">
+        <header><h2>Where listeners are</h2><span class="sub">Top cities, monthly listeners</span></header>
+        <ul class="cities" id="cities"></ul>
+        <div class="callout" id="tour"></div>
+      </section>
+      <section class="panel" aria-label="Playlists">
+        <header><h2>Playlist placements</h2><span class="sub" id="pl-sum"></span></header>
+        <div class="tbl"><table>
+          <thead><tr><th>Playlist</th><th>Track</th><th class="r">Followers</th><th class="r">Spot</th><th>Status</th></tr></thead>
+          <tbody id="playlists"></tbody>
+        </table></div>
+      </section>
+    </div>
+
+    <section class="panel" aria-label="Peers">
+      <header><h2>How they stack up against similar artists</h2><span class="sub">Same genre and career stage</span></header>
+      <div class="tbl"><table class="peers">
+        <thead><tr><th>Artist</th><th class="r">Monthly listeners</th><th class="r">Growth</th><th>Trend</th><th class="r">Momentum</th></tr></thead>
+        <tbody id="peers"></tbody>
+      </table></div>
+    </section>
+  </main>
+</div>
+
+<script>
+// ---------- sample data ----------
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function series(seed,start,trend,vol,bumps){
+  const r=rng(seed),out=[];let v=start;
+  for(let i=0;i<365;i++){
+    let b=0;for(const [day,size] of bumps||[]){if(i>=day)b+=size*Math.exp(-(i-day)/40)*(i-day<6?(i-day)/6:1)}
+    v*=1+trend+(r()-.5)*vol;out.push(Math.max(1,v*(1+b)))}
+  return out}
+const PLATFORMS=[
+  {k:"listeners",name:"Spotify monthly listeners",short:"Spotify listeners"},
+  {k:"followers",name:"Spotify followers",short:"Spotify followers"},
+  {k:"tiktok",name:"TikTok videos using their sounds",short:"TikTok creates"},
+  {k:"youtube",name:"YouTube views (daily)",short:"YouTube daily views"},
+  {k:"instagram",name:"Instagram followers",short:"Instagram"},
+  {k:"shazam",name:"Shazams (daily)",short:"Shazams"}];
+const ARTISTS=[
+  {id:"kira",name:"Kira Sol",color:"#C2557A",tags:["Alt R&B","Atlanta, GA","Independent"],
+   bumps:[[300,.55],[200,.15]],events:[[300,"“Glass Hours” added to a major editorial playlist"],[200,"EP release"]],
+   base:{listeners:[182000,.0034],followers:[41000,.0029],tiktok:[3100,.0052],youtube:[9100,.003],instagram:[58000,.0021],shazam:[620,.004]},seed:11,
+   cities:[["Atlanta","US",.17],["Houston","US",.11],["London","UK",.09],["Chicago","US",.08],["Lagos","NG",.07],["Toronto","CA",.05]],
+   playlists:[["Fresh Finds R&B","Editorial",412000,"Glass Hours",7,"climb"],["Late Night Feelings","Editorial",1840000,"Glass Hours",38,"new"],["Velvet Mornings","Independent curator",64000,"Undertow",3,"hold"],["Alt R&B Weekly","Algorithmic",230000,"Glass Hours",22,"climb"],["Southern Soul Now","Editorial",188000,"Undertow",41,"drop"]]},
+  {id:"juniper",name:"The Juniper Line",color:"#2F8C7A",tags:["Indie folk","Asheville, NC","Signed · Hearthside"],
+   bumps:[[150,.2]],events:[[150,"Spring tour announced"]],
+   base:{listeners:[640000,.0006],followers:[210000,.0011],tiktok:[900,-.0012],youtube:[22000,.0002],instagram:[134000,.0007],shazam:[1400,-.0006]},seed:23,
+   cities:[["Nashville","US",.08],["Chicago","US",.07],["Denver","US",.065],["Portland","US",.06],["Melbourne","AU",.05],["Asheville","US",.045]],
+   playlists:[["Folk & Friends","Editorial",920000,"Low Country",14,"hold"],["Acoustic Commute","Editorial",2100000,"Pine Smoke",61,"drop"],["Front Porch","Independent curator",88000,"Low Country",5,"hold"],["Indie Folk Central","Algorithmic",540000,"Lanterns",33,"new"]]},
+  {id:"marlowe",name:"Marlowe Vance",color:"#7A5BD6",tags:["Bedroom pop","Los Angeles, CA","Independent"],
+   bumps:[[60,.35]],events:[[60,"Single went viral on TikTok"]],
+   base:{listeners:[410000,-.0012],followers:[88000,.0009],tiktok:[8800,-.004],youtube:[14000,-.0015],instagram:[96000,.0002],shazam:[900,-.002]},seed:37,
+   cities:[["Los Angeles","US",.12],["São Paulo","BR",.08],["Mexico City","MX",.075],["New York","US",.07],["Jakarta","ID",.05],["Manila","PH",.045]],
+   playlists:[["Bedroom Pop","Editorial",760000,"Sunburnt",29,"drop"],["Chill Vibes Daily","Algorithmic",3100000,"Sunburnt",88,"drop"],["Soft Pop Diary","Independent curator",41000,"Paper Planes",9,"hold"]]}
+];
+const PEERS={
+  kira:[["Ama Rivers",210000,.0016,58],["Dezi Monroe",150000,.0007,44],["Noor Halim",260000,.0021,63]],
+  juniper:[["Wren & Harbor",720000,.0008,49],["Cold Creek",410000,.0018,61],["Ida Mae Fields",580000,-.0004,38]],
+  marlowe:[["sundae club",380000,.0011,52],["Tomo Aoki",300000,.0024,67],["lilac.hours",450000,-.0018,31]]};
+ARTISTS.forEach((a,ai)=>{a.data={};PLATFORMS.forEach((p,pi)=>{const [s,t]=a.base[p.k];
+  const bump=p.k==="followers"||p.k==="instagram"?a.bumps.map(([d,s])=>[d,s*.35]):a.bumps;
+  a.data[p.k]=series(a.seed*31+pi,s,t,p.k==="tiktok"||p.k==="shazam"?.09:.018,bump)})});
+
+// ---------- helpers ----------
+const $=id=>document.getElementById(id);
+const fmt=n=>n>=1e6?(n/1e6).toFixed(n>=1e7?1:2).replace(/\.?0+$/,"")+"M":n>=1e4?Math.round(n/1e3)+"K":n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,"")+"K":Math.round(n).toLocaleString();
+const pct=(a,b)=>(b-a)/a;
+const pctTxt=p=>(p>0?"+":"")+(Math.abs(p)<.1?(p*100).toFixed(1):Math.round(p*100))+"%";
+const dir=p=>p>.02?"up":p<-.02?"down":"flat";
+const arrow=d=>d==="up"?"▲":d==="down"?"▼":"■";
+const today=new Date(2026,9,25);
+const dayDate=i=>{const d=new Date(today);d.setDate(d.getDate()-(364-i));return d};
+const mdy=d=>d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function spark(vals,w,h,stroke){
+  const mn=Math.min(...vals),mx=Math.max(...vals),r=mx-mn||1;
+  const pts=vals.map((v,i)=>[i/(vals.length-1)*w,h-2-(v-mn)/r*(h-6)]);
+  const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join("");
+  const last=pts[pts.length-1];
+  return `<path d="${d}L${w} ${h}L0 ${h}Z" fill="${stroke}" opacity=".12"/><path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.6" fill="${stroke}"/>`}
+
+function momentum(a,days){
+  const g=k=>{const s=a.data[k];return pct(s[364-days],s[364])};
+  const raw=g("listeners")*1.4+g("tiktok")*.5+g("shazam")*.6+g("followers")*.8+g("instagram")*.3;
+  return Math.max(4,Math.min(98,Math.round(50+raw*60)))}
+
+// ---------- state ----------
+let state={artist:ARTISTS[0],days:90,metric:"listeners"};
+try{const s=JSON.parse(localStorage.getItem("cuepoint")||"{}");const a=ARTISTS.find(x=>x.id===s.a);if(a)state.artist=a;if([28,90,365].includes(s.d))state.days=s.d;if(s.m)state.metric=s.m}catch(e){}
+function save(){try{localStorage.setItem("cuepoint",JSON.stringify({a:state.artist.id,d:state.days,m:state.metric}))}catch(e){}}
+
+// ---------- render ----------
+function render(){
+  const a=state.artist,D=state.days;
+  document.querySelectorAll("#range button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.d===D));
+  $("avatar").style.background=a.color;$("avatar").textContent=a.name.replace(/^The /,"")[0];
+  $("name").textContent=a.name;
+  $("tags").innerHTML=a.tags.map(t=>`<span class="tag">${t}</span>`).join("");
+
+  // momentum
+  const m=momentum(a,D);
+  const band=m>=70?["Heating up","Growth is faster than most artists at this size. Good time to push new music and book shows."]
+    :m>=45?["Holding steady","Numbers are stable. Nothing is pulling them down, but nothing is breaking out yet."]
+    :["Cooling off","Attention is fading from a recent peak. A release or tour news would help reset."];
+  const col=m>=70?cssv("--good"):m>=45?cssv("--accent"):cssv("--bad");
+  const C=2*Math.PI*38;
+  $("gauge").innerHTML=`<circle cx="46" cy="46" r="38" fill="none" stroke="var(--sunk)" stroke-width="9"/><circle cx="46" cy="46" r="38" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C*m/100} ${C}" transform="rotate(-90 46 46)"/><text x="46" y="52" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="22" font-weight="500" fill="var(--ink)">${m}</text>`;
+  $("gauge").setAttribute("aria-label",`Momentum ${m} out of 100`);
+  $("verdict-title").textContent=band[0];$("verdict-text").textContent=band[1];
+
+  // story
+  const ch=PLATFORMS.map(p=>({p,c:pct(a.data[p.k][364-D],a.data[p.k][364])}));
+  const best=[...ch].sort((x,y)=>y.c-x.c)[0],worst=[...ch].sort((x,y)=>x.c-y.c)[0];
+  const L=a.data.listeners,lc=pct(L[364-D],L[364]);
+  const rangeTxt=D===28?"the last 4 weeks":D===90?"the last 3 months":"the past year";
+  const ev=a.events.filter(([d])=>d>=364-D);
+  const topCity=a.cities[0];
+  const items=[
+    {k:dir(lc),t:`<strong>${fmt(L[364])}</strong> people listened on Spotify this month, ${lc>=0?"up":"down"} <strong>${pctTxt(Math.abs(lc)).replace("+","")}</strong> over ${rangeTxt}.`},
+    {k:dir(best.c),t:`Fastest mover: <strong>${best.p.short}</strong> (${pctTxt(best.c)}).${worst.c<-.02?` Slowest: ${worst.p.short} (${pctTxt(worst.c)}).`:""}`},
+    ev.length?{k:"ev",t:`Biggest moment: <strong>${ev[0][1]}</strong> on ${mdy(dayDate(ev[0][0]))}.`}
+      :{k:"ev",t:`No big release or playlist moment in ${rangeTxt}. Movement here is organic.`},
+    {k:"city",t:`<strong>${topCity[0]}</strong> is the biggest city, with about ${fmt(L[364]*topCity[2])} listeners.`}];
+  const icoStyle={up:["var(--good-soft)","var(--good)","↑"],down:["var(--bad-soft)","var(--bad)","↓"],flat:["var(--flat-soft)","var(--flat)","→"],ev:["var(--accent-soft)","var(--accent)","★"],city:["var(--accent-soft)","var(--accent)","◎"]};
+  $("story").innerHTML=items.map(i=>{const s=icoStyle[i.k];return `<li><span class="ico" style="background:${s[0]};color:${s[1]}" aria-hidden="true">${s[2]}</span><p>${i.t}</p></li>`}).join("");
+
+  // pulse cards
+  $("pulse").innerHTML=ch.map(({p,c})=>{const d=dir(c),s=a.data[p.k].slice(364-D);
+    const stroke=d==="up"?cssv("--good"):d==="down"?cssv("--bad"):cssv("--flat");
+    return `<button class="card" data-k="${p.k}" aria-pressed="${p.k===state.metric}"><div class="top"><span class="plat">${p.short}</span><span class="chip ${d}">${arrow(d)} ${pctTxt(c)}</span></div><div class="val num">${fmt(a.data[p.k][364])}</div><svg viewBox="0 0 160 34" preserveAspectRatio="none" aria-hidden="true">${spark(s,160,34,stroke)}</svg></button>`}).join("");
+  document.querySelectorAll(".card").forEach(c=>c.onclick=()=>{state.metric=c.dataset.k;save();render()});
+
+  drawMain();
+
+  // cities
+  const mx=a.cities[0][2];
+  $("cities").innerHTML=a.cities.map(([c,cc,s])=>`<li><span class="nm">${c}<small>${cc}</small></span><span class="num">${fmt(L[364]*s)}</span><span class="meter"><i style="width:${s/mx*100}%"></i></span></li>`).join("");
+  const intl=a.cities.filter(c=>c[1]!=="US");
+  $("tour").innerHTML=intl.length?`<strong>Tour hint:</strong> ${intl.map(c=>c[0]).slice(0,2).join(" and ")} ${intl.length>1?"are":"is"} in the top six. Worth a look before booking a US-only run.`:`<strong>Tour hint:</strong> Every top city is in the US, so a domestic run covers the core audience.`;
+
+  // playlists
+  const reach=a.playlists.reduce((s,p)=>s+p[2],0);
+  $("pl-sum").textContent=`${a.playlists.length} active · ${fmt(reach)} combined followers`;
+  const lab={new:"Just added",climb:"Climbing",drop:"Slipping",hold:"Steady"};
+  $("playlists").innerHTML=[...a.playlists].sort((x,y)=>y[2]-x[2]).map(([n,t,f,tr,pos,st])=>`<tr><td class="pl">${n}<small>${t}</small></td><td>${tr}</td><td class="r num">${fmt(f)}</td><td class="r num">#${pos}</td><td><span class="status ${st}">${lab[st]}</span></td></tr>`).join("");
+
+  // peers
+  const me=[a.name,L[364],null,m,L.slice(364-D)];
+  const rows=PEERS[a.id].map(([n,v,t,mo],i)=>{const s=series(500+i*7+a.seed,v*Math.pow(1-t,364),t,.02,[]);return [n,s[364],null,mo,s.slice(364-D)]});
+  const all=[me,...rows].map(r=>{r[2]=pct(r[4][0],r[4][r[4].length-1]);return r}).sort((x,y)=>y[3]-x[3]);
+  $("peers").innerHTML=all.map(([n,v,g,mo,s])=>{const d=dir(g),st=d==="up"?cssv("--good"):d==="down"?cssv("--bad"):cssv("--flat");
+    return `<tr class="${n===a.name?"me":""}"><td>${n}${n===a.name?' <span class="sub">(viewing)</span>':""}</td><td class="r num">${fmt(v)}</td><td class="r"><span class="chip ${d}">${pctTxt(g)}</span></td><td><svg class="mini" viewBox="0 0 90 24" preserveAspectRatio="none" aria-hidden="true">${spark(s,90,24,st)}</svg></td><td class="r num">${mo}</td></tr>`}).join("");
+}
+
+function niceTicks(mn,mx,n){const span=mx-mn||1,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))),f=step0/mag;
+  const step=(f<1.5?1:f<3?2:f<7?5:10)*mag;const lo=Math.floor(mn/step)*step,hi=Math.ceil(mx/step)*step;const t=[];for(let v=lo;v<=hi+step/2;v+=step)t.push(v);return t}
+
+function drawMain(){
+  const a=state.artist,D=state.days,p=PLATFORMS.find(x=>x.k===state.metric),full=a.data[p.k];
+  const s=full.slice(364-D),c=pct(s[0],s[s.length-1]);
+  $("chart-label").textContent=p.name;$("chart-big").textContent=fmt(s[s.length-1]);
+  $("chart-sub").innerHTML=`<span class="chip ${dir(c)}">${arrow(dir(c))} ${pctTxt(c)}</span> since ${mdy(dayDate(364-D))}`;
+  const svg=$("main-chart"),W=svg.clientWidth||800,H=280,pl=52,pr=14,pt=14,pb=28;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const ticks=niceTicks(Math.min(...s),Math.max(...s),4),y0=ticks[0],y1=ticks[ticks.length-1];
+  const X=i=>pl+i/(s.length-1)*(W-pl-pr),Y=v=>pt+(1-(v-y0)/(y1-y0))*(H-pt-pb);
+  const acc=cssv("--accent");
+  let g=ticks.map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-8}" y="${Y(t)+4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">${fmt(t)}</text>`).join("");
+  const nx=W<500?3:5;for(let k=0;k<nx;k++){const i=Math.round(k/(nx-1)*(s.length-1));g+=`<text x="${X(i)}" y="${H-8}" text-anchor="${k===0?"start":k===nx-1?"end":"middle"}" font-size="11" fill="var(--muted)">${mdy(dayDate(364-D+i))}</text>`}
+  const evs=a.events.filter(([d])=>d>=364-D);
+  evs.forEach(([d])=>{const x=X(d-(364-D));g+=`<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="var(--warm)" stroke-dasharray="3 3"/><rect x="${x-4}" y="${pt-2}" width="8" height="8" rx="2" fill="var(--warm)"/>`});
+  const d=s.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join("");
+  g+=`<defs><linearGradient id="fillg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${acc}" stop-opacity=".22"/><stop offset="1" stop-color="${acc}" stop-opacity="0"/></linearGradient></defs>`;
+  g+=`<path d="${d}L${X(s.length-1)} ${H-pb}L${pl} ${H-pb}Z" fill="url(#fillg)"/><path d="${d}" fill="none" stroke="${acc}" stroke-width="2" stroke-linejoin="round"/>`;
+  g+=`<circle cx="${X(s.length-1)}" cy="${Y(s[s.length-1])}" r="4" fill="${acc}" stroke="var(--surface)" stroke-width="2"/>`;
+  g+=`<line id="hov" y1="${pt}" y2="${H-pb}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/><circle id="hovd" r="4" fill="${acc}" visibility="hidden"/>`;
+  svg.innerHTML=g;
+  $("events").innerHTML=evs.map(([d,t])=>`<span>${mdy(dayDate(d))}: ${t}</span>`).join("");
+  const tip=$("tip"),hov=svg.querySelector("#hov"),hd=svg.querySelector("#hovd");
+  svg.onpointermove=e=>{const r=svg.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width;
+    const i=Math.max(0,Math.min(s.length-1,Math.round((x-pl)/(W-pl-pr)*(s.length-1))));
+    hov.setAttribute("x1",X(i));hov.setAttribute("x2",X(i));hov.setAttribute("visibility","visible");
+    hd.setAttribute("cx",X(i));hd.setAttribute("cy",Y(s[i]));hd.setAttribute("visibility","visible");
+    tip.hidden=false;tip.textContent=`${mdy(dayDate(364-D+i))} · ${fmt(s[i])}`;
+    tip.style.left=X(i)*r.width/W+"px";tip.style.top=Y(s[i])*r.height/H+"px"};
+  svg.onpointerleave=()=>{tip.hidden=true;hov.setAttribute("visibility","hidden");hd.setAttribute("visibility","hidden")};
+}
+
+// ---------- controls ----------
+$("artist-list").innerHTML=ARTISTS.map(a=>`<option value="${a.name}">`).join("");
+$("artist-search").addEventListener("change",e=>{const q=e.target.value.toLowerCase().trim();
+  const a=ARTISTS.find(x=>x.name.toLowerCase()===q)||ARTISTS.find(x=>x.name.toLowerCase().includes(q));
+  if(a){state.artist=a;save();render();e.target.value=""}});
+document.querySelectorAll("#range button").forEach(b=>b.onclick=()=>{state.days=+b.dataset.d;save();render()});
+let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(drawMain,120)});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",render);
+new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+render();
+</script>
+</body>
+</html>
