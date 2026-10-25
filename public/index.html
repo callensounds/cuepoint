@@ -132,6 +132,16 @@ td.r,th.r{text-align:right}
 .peers tr.me td:last-child{border-radius:0 6px 6px 0}
 .mini{width:90px;height:24px;display:block}
 
+.note b.live{color:var(--good)}
+.status-line{font-size:13.5px;padding:10px 14px;border-radius:8px;background:var(--accent-soft);margin-bottom:12px}
+.status-line.err{background:var(--bad-soft);color:var(--bad)}
+.status-line button{border:0;background:var(--surface);padding:3px 10px;border-radius:999px;cursor:pointer;margin:4px 6px 0 0;font-size:13px}
+body.live .sample-only{display:none}
+.srcs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.srcs li{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.srcs li:last-child{border-bottom:0}
+.srcs a{color:var(--accent)}
+.loading main{opacity:.45;transition:opacity .2s}
 @media (max-width:860px){.hero,.two{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:480px){.seg button{padding:5px 9px}.verdict{flex-direction:column;align-items:flex-start}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -148,7 +158,7 @@ td.r,th.r{text-align:right}
     </div>
     <label class="search" for="artist-search">
       <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <input id="artist-search" list="artist-list" placeholder="Search an artist" autocomplete="off">
+      <input id="artist-search" list="artist-list" placeholder="Search any artist" autocomplete="off">
       <datalist id="artist-list"></datalist>
     </label>
     <div class="seg" role="group" aria-label="Time range" id="range">
@@ -160,7 +170,8 @@ td.r,th.r{text-align:right}
 </div>
 
 <div class="wrap">
-  <div class="note"><b>Sample data</b> Artists and numbers below are invented to show how the dashboard reads. Try Kira Sol, The Juniper Line or Marlowe Vance.</div>
+  <div class="note" id="note"></div>
+  <div class="status-line" id="status" hidden></div>
   <main>
     <section class="panel hero" aria-label="Summary">
       <div>
@@ -197,7 +208,7 @@ td.r,th.r{text-align:right}
           <div class="big num" id="chart-big"></div>
           <div class="sub" id="chart-sub"></div>
         </div>
-        <div class="sub">Pick any card above to chart it</div>
+        <div class="sub" id="chart-hint">Pick any card above to chart it</div>
       </div>
       <div class="chartbox">
         <svg id="main-chart" role="img" aria-label="Trend chart"></svg>
@@ -206,7 +217,13 @@ td.r,th.r{text-align:right}
       <div class="events" id="events"></div>
     </section>
 
-    <div class="two">
+    <section class="panel" aria-label="Data sources" id="live-sources" hidden>
+      <header><h2>Where this data comes from</h2><span class="sub" id="tracked-since"></span></header>
+      <ul class="srcs" id="srcs"></ul>
+      <div class="callout">Streaming numbers (monthly listeners, top cities, playlists) aren't available from public sources. They'll come from artists connecting their own Spotify for Artists and YouTube Studio accounts.</div>
+    </section>
+
+    <div class="two sample-only">
       <section class="panel" aria-label="Audience">
         <header><h2>Where listeners are</h2><span class="sub">Top cities, monthly listeners</span></header>
         <ul class="cities" id="cities"></ul>
@@ -221,7 +238,7 @@ td.r,th.r{text-align:right}
       </section>
     </div>
 
-    <section class="panel" aria-label="Peers">
+    <section class="panel sample-only" aria-label="Peers">
       <header><h2>How they stack up against similar artists</h2><span class="sub">Same genre and career stage</span></header>
       <div class="tbl"><table class="peers">
         <thead><tr><th>Artist</th><th class="r">Monthly listeners</th><th class="r">Growth</th><th>Trend</th><th class="r">Momentum</th></tr></thead>
@@ -297,12 +314,16 @@ function momentum(a,days){
   return Math.max(4,Math.min(98,Math.round(50+raw*60)))}
 
 // ---------- state ----------
-let state={artist:ARTISTS[0],days:90,metric:"listeners"};
+let state={artist:ARTISTS[0],days:90,metric:"listeners",live:null};
 try{const s=JSON.parse(localStorage.getItem("cuepoint")||"{}");const a=ARTISTS.find(x=>x.id===s.a);if(a)state.artist=a;if([28,90,365].includes(s.d))state.days=s.d;if(s.m)state.metric=s.m}catch(e){}
 function save(){try{localStorage.setItem("cuepoint",JSON.stringify({a:state.artist.id,d:state.days,m:state.metric}))}catch(e){}}
 
 // ---------- render ----------
 function render(){
+  if(state.live)return renderLive();
+  document.body.classList.remove("live");$("live-sources").hidden=true;
+  document.querySelector('[aria-label="Trend"]').hidden=false;
+  $("note").innerHTML=`<b>Sample data</b> These three artists are invented to show the layout. Search any real artist above for live data.`;
   const a=state.artist,D=state.days;
   document.querySelectorAll("#range button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.d===D));
   $("avatar").style.background=a.color;$("avatar").textContent=a.name.replace(/^The /,"")[0];
@@ -367,47 +388,202 @@ function render(){
 function niceTicks(mn,mx,n){const span=mx-mn||1,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))),f=step0/mag;
   const step=(f<1.5?1:f<3?2:f<7?5:10)*mag;const lo=Math.floor(mn/step)*step,hi=Math.ceil(mx/step)*step;const t=[];for(let v=lo;v<=hi+step/2;v+=step)t.push(v);return t}
 
-function drawMain(){
-  const a=state.artist,D=state.days,p=PLATFORMS.find(x=>x.k===state.metric),full=a.data[p.k];
-  const s=full.slice(364-D),c=pct(s[0],s[s.length-1]);
-  $("chart-label").textContent=p.name;$("chart-big").textContent=fmt(s[s.length-1]);
-  $("chart-sub").innerHTML=`<span class="chip ${dir(c)}">${arrow(dir(c))} ${pctTxt(c)}</span> since ${mdy(dayDate(364-D))}`;
+// Generic trend chart. opts: {label, values, dateAt(i)->Date, events:[[i,text]], fmtV}
+function drawChart(o){
+  const s=o.values,c=pct(s[0]||1,s[s.length-1]);
+  $("chart-label").textContent=o.label;$("chart-big").textContent=fmt(s[s.length-1]);
+  $("chart-sub").innerHTML=s.length>1?`<span class="chip ${dir(c)}">${arrow(dir(c))} ${pctTxt(c)}</span> since ${mdy(o.dateAt(0))}`:"Only one reading so far";
   const svg=$("main-chart"),W=svg.clientWidth||800,H=280,pl=52,pr=14,pt=14,pb=28;
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
-  const ticks=niceTicks(Math.min(...s),Math.max(...s),4),y0=ticks[0],y1=ticks[ticks.length-1];
-  const X=i=>pl+i/(s.length-1)*(W-pl-pr),Y=v=>pt+(1-(v-y0)/(y1-y0))*(H-pt-pb);
+  const ticks=niceTicks(Math.min(...s),Math.max(...s),4),y0=ticks[0],y1=ticks[ticks.length-1]||y0+1;
+  const n=Math.max(1,s.length-1);
+  const X=i=>pl+i/n*(W-pl-pr),Y=v=>pt+(1-(v-y0)/((y1-y0)||1))*(H-pt-pb);
   const acc=cssv("--accent");
   let g=ticks.map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-width="1"/><text x="${pl-8}" y="${Y(t)+4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">${fmt(t)}</text>`).join("");
-  const nx=W<500?3:5;for(let k=0;k<nx;k++){const i=Math.round(k/(nx-1)*(s.length-1));g+=`<text x="${X(i)}" y="${H-8}" text-anchor="${k===0?"start":k===nx-1?"end":"middle"}" font-size="11" fill="var(--muted)">${mdy(dayDate(364-D+i))}</text>`}
-  const evs=a.events.filter(([d])=>d>=364-D);
-  evs.forEach(([d])=>{const x=X(d-(364-D));g+=`<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="var(--warm)" stroke-dasharray="3 3"/><rect x="${x-4}" y="${pt-2}" width="8" height="8" rx="2" fill="var(--warm)"/>`});
+  const nx=Math.min(s.length,W<500?3:5);
+  for(let k=0;k<nx;k++){const i=nx===1?0:Math.round(k/(nx-1)*(s.length-1));g+=`<text x="${X(i)}" y="${H-8}" text-anchor="${k===0?"start":k===nx-1?"end":"middle"}" font-size="11" fill="var(--muted)">${mdy(o.dateAt(i))}</text>`}
+  const evs=o.events||[];
+  evs.forEach(([i])=>{const x=X(i);g+=`<line x1="${x}" x2="${x}" y1="${pt}" y2="${H-pb}" stroke="var(--warm)" stroke-dasharray="3 3"/><rect x="${x-4}" y="${pt-2}" width="8" height="8" rx="2" fill="var(--warm)"/>`});
   const d=s.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join("");
   g+=`<defs><linearGradient id="fillg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${acc}" stop-opacity=".22"/><stop offset="1" stop-color="${acc}" stop-opacity="0"/></linearGradient></defs>`;
-  g+=`<path d="${d}L${X(s.length-1)} ${H-pb}L${pl} ${H-pb}Z" fill="url(#fillg)"/><path d="${d}" fill="none" stroke="${acc}" stroke-width="2" stroke-linejoin="round"/>`;
+  if(s.length>1)g+=`<path d="${d}L${X(s.length-1)} ${H-pb}L${pl} ${H-pb}Z" fill="url(#fillg)"/><path d="${d}" fill="none" stroke="${acc}" stroke-width="2" stroke-linejoin="round"/>`;
   g+=`<circle cx="${X(s.length-1)}" cy="${Y(s[s.length-1])}" r="4" fill="${acc}" stroke="var(--surface)" stroke-width="2"/>`;
   g+=`<line id="hov" y1="${pt}" y2="${H-pb}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/><circle id="hovd" r="4" fill="${acc}" visibility="hidden"/>`;
   svg.innerHTML=g;
-  $("events").innerHTML=evs.map(([d,t])=>`<span>${mdy(dayDate(d))}: ${t}</span>`).join("");
+  $("events").innerHTML=evs.map(([i,t])=>`<span>${mdy(o.dateAt(i))}: ${t}</span>`).join("");
   const tip=$("tip"),hov=svg.querySelector("#hov"),hd=svg.querySelector("#hovd");
   svg.onpointermove=e=>{const r=svg.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width;
-    const i=Math.max(0,Math.min(s.length-1,Math.round((x-pl)/(W-pl-pr)*(s.length-1))));
+    const i=Math.max(0,Math.min(s.length-1,Math.round((x-pl)/(W-pl-pr)*n)));
     hov.setAttribute("x1",X(i));hov.setAttribute("x2",X(i));hov.setAttribute("visibility","visible");
     hd.setAttribute("cx",X(i));hd.setAttribute("cy",Y(s[i]));hd.setAttribute("visibility","visible");
-    tip.hidden=false;tip.textContent=`${mdy(dayDate(364-D+i))} · ${fmt(s[i])}`;
+    tip.hidden=false;tip.textContent=`${mdy(o.dateAt(i))} · ${fmt(s[i])}`;
     tip.style.left=X(i)*r.width/W+"px";tip.style.top=Y(s[i])*r.height/H+"px"};
   svg.onpointerleave=()=>{tip.hidden=true;hov.setAttribute("visibility","hidden");hd.setAttribute("visibility","hidden")};
 }
 
+function drawMain(){
+  if(state.live)return drawLiveChart();
+  const a=state.artist,D=state.days,p=PLATFORMS.find(x=>x.k===state.metric)||PLATFORMS[0];
+  drawChart({label:p.name,values:a.data[p.k].slice(364-D),dateAt:i=>dayDate(364-D+i),
+    events:a.events.filter(([d])=>d>=364-D).map(([d,t])=>[d-(364-D),t])});
+}
+
+// ---------- live artists ----------
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const parseDay=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const rolling=(arr,w)=>arr.map((_,i)=>{const a=arr.slice(Math.max(0,i-w+1),i+1);return a.reduce((s,x)=>s+x,0)/a.length});
+const sum=a=>a.reduce((s,x)=>s+x,0);
+const hueColor=name=>{let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))%360;return `hsl(${h} 45% 45%)`};
+
+function liveMetrics(L,D){
+  const out=[];
+  if(L.wiki&&L.wiki.days.length){
+    const days=L.wiki.days,raw=days.map(x=>x.v),sm=rolling(raw,7);
+    const range=sm.slice(-D),dr=days.slice(-D);
+    out.push({k:"wiki",short:"Wikipedia readers / day",name:"Wikipedia page views per day (7-day average)",
+      values:range,dates:dr.map(x=>parseDay(x.d)),last:range[range.length-1],change:pct(range[0]||1,range[range.length-1])});
+    const m30=[];for(let i=29;i<raw.length;i++)m30.push(sum(raw.slice(i-29,i+1)));
+    const r30=m30.slice(-D),d30=days.slice(-r30.length);
+    out.push({k:"wiki30",short:"Wikipedia readers / 30 days",name:"Wikipedia page views, rolling 30 days",
+      values:r30,dates:d30.map(x=>parseDay(x.d)),last:r30[r30.length-1],change:pct(r30[0]||1,r30[r30.length-1])});
+  }
+  if(L.lastfm){
+    const h=(L.lastfm.history||[]).filter(x=>x.listeners!=null);
+    const cutoff=new Date(Date.now()-D*86400000);
+    const hr=h.filter(x=>parseDay(x.d)>=cutoff);const use=hr.length?hr:[{d:new Date().toISOString().slice(0,10),listeners:L.lastfm.listeners,playcount:L.lastfm.playcount}];
+    const mk=(k,short,name,f)=>{const v=use.map(f);out.push({k,short,name,values:v,dates:use.map(x=>parseDay(x.d)),last:v[v.length-1],change:v.length>1?pct(v[0]||1,v[v.length-1]):null})};
+    mk("lf_l","Last.fm listeners","Last.fm listeners (all time)",x=>x.listeners);
+    mk("lf_p","Last.fm plays","Last.fm plays (all time)",x=>x.playcount);
+    mk("lf_ppl","Plays per listener","Last.fm plays per listener",x=>x.listeners?x.playcount/x.listeners:0);
+  }
+  return out;
+}
+
+function liveMomentum(L,mets){
+  let score=50,have=false;
+  if(L.wiki&&L.wiki.days.length>=56){const r=L.wiki.days.map(x=>x.v),a=sum(r.slice(-28)),b=sum(r.slice(-56,-28));
+    if(a+b>0){score+=Math.max(-40,Math.min(40,pct(b||1,a)*40));have=true}}
+  const lf=mets.find(m=>m.k==="lf_l");
+  if(lf&&lf.values.length>1){score+=Math.max(-20,Math.min(20,lf.change*800));have=true}
+  return have?Math.max(4,Math.min(98,Math.round(score))):null;
+}
+
+function drawGauge(m){
+  const col=m==null?cssv("--flat"):m>=70?cssv("--good"):m>=45?cssv("--accent"):cssv("--bad");
+  const C=2*Math.PI*38,v=m==null?0:m;
+  $("gauge").innerHTML=`<circle cx="46" cy="46" r="38" fill="none" stroke="var(--sunk)" stroke-width="9"/><circle cx="46" cy="46" r="38" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C*v/100} ${C}" transform="rotate(-90 46 46)"/><text x="46" y="52" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="22" font-weight="500" fill="var(--ink)">${m==null?"–":m}</text>`;
+  $("gauge").setAttribute("aria-label",m==null?"Momentum not available yet":`Momentum ${m} out of 100`);
+}
+
+function renderLive(){
+  const L=state.live,D=state.days,a=L.artist;
+  document.body.classList.add("live");
+  $("note").innerHTML=`<b class="live">Live data</b> Public sources, refreshed daily. ${L.lastfm_enabled?"":"Last.fm isn't switched on yet, so only Wikipedia and MusicBrainz data is shown."}`;
+  document.querySelectorAll("#range button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.d===D));
+  $("avatar").style.background=hueColor(a.name);$("avatar").textContent=a.name.replace(/^The /,"")[0]||"?";
+  $("name").textContent=a.name;
+  const tags=[a.type,a.area||a.country,...a.tags,a.disambiguation].filter(Boolean);
+  $("tags").innerHTML=tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("");
+
+  const mets=liveMetrics(L,D);
+  if(!mets.find(m=>m.k===state.metric))state.metric=mets[0]?mets[0].k:null;
+  const m=liveMomentum(L,mets);drawGauge(m);
+  const band=m==null?["Not enough data yet","There's no Wikipedia page or tracking history for this artist yet. Check back after a few days of daily snapshots."]
+    :m>=70?["Heating up","More people are looking them up than a month ago. Something is building."]
+    :m>=45?["Holding steady","Attention is about level with last month."]
+    :["Cooling off","Fewer people are looking them up than a month ago."];
+  $("verdict-title").textContent=band[0];$("verdict-text").textContent=band[1];
+
+  // story
+  const items=[];
+  if(L.wiki&&L.wiki.days.length>=60){
+    const r=L.wiki.days.map(x=>x.v),a30=sum(r.slice(-30)),b30=sum(r.slice(-60,-30)),c=pct(b30||1,a30);
+    items.push({k:dir(c),t:`<strong>${fmt(a30)}</strong> people read their Wikipedia page in the last 30 days, ${c>=0?"up":"down"} <strong>${pctTxt(Math.abs(c)).replace("+","")}</strong> from the 30 days before.`});
+    const rd=L.wiki.days.slice(-D);let pi=0;rd.forEach((x,i)=>{if(x.v>rd[pi].v)pi=i});
+    const avg=sum(rd.map(x=>x.v))/rd.length;
+    if(rd[pi].v>avg*2.5&&rd[pi].v>50)items.push({k:"ev",t:`Biggest spike: <strong>${fmt(rd[pi].v)}</strong> readers on ${mdy(parseDay(rd[pi].d))}, about ${Math.round(rd[pi].v/(avg||1))}× a normal day. Usually a release, news story or viral moment.`});
+    else items.push({k:"flat",t:`No big spikes in this period. Attention has been steady, without a breakout moment.`});
+  }else items.push({k:"flat",t:`No English Wikipedia page is linked to this artist, so there's no attention history yet.`});
+  if(L.lastfm){const p=L.lastfm.playcount/(L.lastfm.listeners||1);
+    items.push({k:"city",t:`<strong>${fmt(L.lastfm.listeners)}</strong> people have played them on Last.fm, <strong>${fmt(L.lastfm.playcount)}</strong> plays in total. That's ${p.toFixed(0)} plays per listener, ${p>=40?"a sign of a devoted core fanbase":p>=15?"a healthy mix of fans and casual listeners":"mostly casual listening so far"}.`});}
+  items.push({k:"ev",t:`Cuepoint has tracked them since <strong>${mdy(parseDay(L.tracked_since||new Date().toISOString().slice(0,10)))}</strong>. Daily growth gets sharper as history builds.`});
+  const icoStyle={up:["var(--good-soft)","var(--good)","↑"],down:["var(--bad-soft)","var(--bad)","↓"],flat:["var(--flat-soft)","var(--flat)","→"],ev:["var(--accent-soft)","var(--accent)","★"],city:["var(--accent-soft)","var(--accent)","◎"]};
+  $("story").innerHTML=items.map(i=>{const s=icoStyle[i.k];return `<li><span class="ico" style="background:${s[0]};color:${s[1]}" aria-hidden="true">${s[2]}</span><p>${i.t}</p></li>`}).join("");
+
+  // cards
+  $("pulse").innerHTML=mets.map(mt=>{const d=mt.change==null?"flat":dir(mt.change);
+    const stroke=d==="up"?cssv("--good"):d==="down"?cssv("--bad"):cssv("--flat");
+    const chip=mt.change==null?`<span class="chip flat">new</span>`:`<span class="chip ${d}">${arrow(d)} ${pctTxt(mt.change)}</span>`;
+    const val=mt.k==="lf_ppl"?mt.last.toFixed(1):fmt(mt.last);
+    const sp=mt.values.length>1?spark(mt.values,160,34,stroke):"";
+    return `<button class="card" data-k="${mt.k}" aria-pressed="${mt.k===state.metric}"><div class="top"><span class="plat">${mt.short}</span>${chip}</div><div class="val num">${val}</div><svg viewBox="0 0 160 34" preserveAspectRatio="none" aria-hidden="true">${sp}</svg></button>`}).join("")
+    ||`<div class="panel sub">No public stats found for this artist yet.</div>`;
+  document.querySelectorAll(".card").forEach(c=>c.onclick=()=>{state.metric=c.dataset.k;renderLive()});
+  state._mets=mets;
+  document.querySelector('[aria-label="Trend"]').hidden=!mets.length;
+  if(mets.length)drawLiveChart();
+
+  // sources
+  $("live-sources").hidden=false;
+  $("tracked-since").textContent=`Updated ${new Date(L.fetched_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`;
+  const src=[[`MusicBrainz`,`Artist identity, genres and official links`,`https://musicbrainz.org/artist/${a.mbid}`]];
+  if(L.wiki)src.push([`Wikipedia`,`Daily page views for “${L.wiki.title}”`,L.wiki.url]);
+  if(L.lastfm)src.push([`Last.fm`,`Listeners and plays, snapshotted daily`,L.lastfm.url]);
+  $("srcs").innerHTML=src.map(([n,w,u])=>`<li><span><strong>${n}</strong> · ${esc(w)}</span><a href="${esc(u)}" target="_blank" rel="noopener">View source</a></li>`).join("")
+    +(a.links.length?`<li><span><strong>Official links</strong></span><span>${a.links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.kind)}</a>`).join(" · ")}</span></li>`:"");
+}
+
+function drawLiveChart(){
+  const mt=(state._mets||[]).find(x=>x.k===state.metric);if(!mt)return;
+  let events=[];
+  if(mt.k==="wiki"&&state.live.wiki){const rd=state.live.wiki.days.slice(-state.days);let pi=0;rd.forEach((x,i)=>{if(x.v>rd[pi].v)pi=i});
+    const avg=sum(rd.map(x=>x.v))/rd.length;if(rd[pi].v>avg*2.5&&rd[pi].v>50){const idx=mt.dates.findIndex(d=>+d===+parseDay(rd[pi].d));if(idx>=0)events=[[idx,`Spike of ${fmt(rd[pi].v)} readers`]]}}
+  drawChart({label:mt.name,values:mt.values,dateAt:i=>mt.dates[i],events});
+  $("chart-hint").textContent="Pick any card above to chart it";
+}
+
+// ---------- lookups ----------
+function setStatus(html,err){const s=$("status");if(!html){s.hidden=true;return}s.hidden=false;s.className="status-line"+(err?" err":"");s.innerHTML=html}
+async function lookup(params,label){
+  setStatus(`Looking up <strong>${esc(label)}</strong>…`);document.body.classList.add("loading");
+  try{
+    const r=await fetch("/api/artist?"+new URLSearchParams(params));
+    const d=await r.json().catch(()=>({error:"The server sent back something unexpected."}));
+    if(!r.ok||d.error)throw new Error(d.error||`Lookup failed (${r.status}).`);
+    state.live=d;state.metric="wiki";
+    try{localStorage.setItem("cuepoint-live",d.artist.mbid)}catch(e){}
+    setStatus(d.matches&&d.matches.length?`Not the right one? `+d.matches.slice(0,4).map(m=>`<button data-mbid="${m.mbid}">${esc(m.name)}${m.disambiguation?` (${esc(m.disambiguation)})`:m.country?` (${esc(m.country)})`:""}</button>`).join(""):"");
+    document.querySelectorAll("#status button").forEach(b=>b.onclick=()=>lookup({mbid:b.dataset.mbid},b.textContent));
+    render();loadTracked();
+  }catch(e){
+    const local=location.protocol==="file:"||!location.host;
+    setStatus(local?"Live lookups only work on the deployed site.":esc(e.message),true);
+  }finally{document.body.classList.remove("loading")}
+}
+let tracked=[];
+async function loadTracked(){
+  try{const r=await fetch("/api/tracked");if(!r.ok)return;tracked=(await r.json()).artists||[]}catch(e){}
+  $("artist-list").innerHTML=[...ARTISTS.map(a=>a.name+" (sample)"),...tracked.map(t=>t.name)].map(n=>`<option value="${esc(n)}">`).join("");
+}
+
 // ---------- controls ----------
-$("artist-list").innerHTML=ARTISTS.map(a=>`<option value="${a.name}">`).join("");
-$("artist-search").addEventListener("change",e=>{const q=e.target.value.toLowerCase().trim();
-  const a=ARTISTS.find(x=>x.name.toLowerCase()===q)||ARTISTS.find(x=>x.name.toLowerCase().includes(q));
-  if(a){state.artist=a;save();render();e.target.value=""}});
+$("artist-list").innerHTML=ARTISTS.map(a=>`<option value="${esc(a.name)} (sample)">`).join("");
+$("artist-search").addEventListener("change",e=>{
+  const raw=e.target.value.trim();if(!raw)return;
+  const q=raw.replace(/ \(sample\)$/,"").toLowerCase();
+  const a=ARTISTS.find(x=>x.name.toLowerCase()===q);
+  e.target.value="";
+  if(a){state.live=null;state.artist=a;state.metric="listeners";setStatus("");try{localStorage.removeItem("cuepoint-live")}catch(err){}save();render();return}
+  const t=tracked.find(x=>x.name.toLowerCase()===q);
+  lookup(t?{mbid:t.mbid}:{q:raw},raw);
+});
 document.querySelectorAll("#range button").forEach(b=>b.onclick=()=>{state.days=+b.dataset.d;save();render()});
 let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(drawMain,120)});
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",render);
 new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 render();
+loadTracked();
+try{const lm=localStorage.getItem("cuepoint-live");if(lm)lookup({mbid:lm},"your last artist")}catch(e){}
 </script>
 </body>
 </html>

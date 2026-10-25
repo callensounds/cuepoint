@@ -1,3 +1,11 @@
 name = "cuepoint"
 compatibility_date = "2026-09-01"
 pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cuepoint"
+database_id = "062a4cf6-c9c6-4eeb-8461-3ae889aae848"
+
+# Last.fm key is a secret: set LASTFM_KEY in Cloudflare → your Pages project →
+# Settings → Variables and Secrets (type: Secret). Never commit it here.
