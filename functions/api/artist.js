@@ -5,7 +5,7 @@ import {
   saveArtist, saveSnapshot, saveDeezerId, getHistory,
 } from "../_lib.js";
 
-const CACHE_V = 2;
+const CACHE_V = 3;
 const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function onRequestGet({ request, env, waitUntil }) {
@@ -60,7 +60,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
       storage_enabled: !!env.DB,
       fetched_at: new Date().toISOString(),
     };
-    const resp = json(body, 200, { "Cache-Control": "public, max-age=21600" });
+    const resp = json(body, 200, { "Cache-Control": "public, max-age=300, s-maxage=21600" } // browsers: 5 min; edge cache: 6 h);
     waitUntil(cache.put(cacheKey, resp.clone()));
     return resp;
   } catch (e) {

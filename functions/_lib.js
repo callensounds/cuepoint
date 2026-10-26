@@ -160,7 +160,7 @@ export async function getDeezer(id) {
     picture: a.picture_medium || null,
     fans: +a.nb_fan || 0,
     albums: +a.nb_album || 0,
-    top: (top.data || []).map((t) => ({
+    top: (top.data || []).slice().sort((x, y) => (+y.rank || 0) - (+x.rank || 0)).map((t) => ({
       title: t.title_short || t.title,
       album: (t.album && t.album.title) || "",
       rank: +t.rank || 0,
@@ -196,8 +196,13 @@ export async function getAppleCharts(artist, waitUntil) {
   const me = norm(artist.name);
   // Credits like "Artist A & Artist B" or "A, B": count the artist if they're one of the named artists.
   const credited = (s) => norm(s) === me || String(s).split(/\s*(?:,|&|\bx\b|\bfeat\.?|\bwith\b)\s*/i).some((p) => norm(p) === me);
+  const failed = [];
   const lists = await Promise.all(
-    CHART_COUNTRIES.map(([c]) => appleTop100(c, waitUntil).catch(() => null))
+    CHART_COUNTRIES.map(([c]) =>
+      appleTop100(c, waitUntil)
+        .catch(() => sleep(600).then(() => appleTop100(c, waitUntil))) // one retry: the feeds occasionally refuse
+        .catch((e) => { failed.push(`${c}: ${e.message}`); return null; })
+    )
   );
   const entries = [];
   lists.forEach((list, i) => {
@@ -213,6 +218,7 @@ export async function getAppleCharts(artist, waitUntil) {
   return {
     checked: CHART_COUNTRIES.filter((_, i) => lists[i]).map(([, l]) => l),
     entries,
+    failed,
     url,
   };
 }
