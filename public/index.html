@@ -129,6 +129,22 @@ td.r,th.r{text-align:right}
 .status.drop{background:var(--bad-soft);color:var(--bad)}
 .status.hold{background:var(--flat-soft);color:var(--flat)}
 
+.svc{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.svc article{border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:6px;align-content:start;background:var(--surface)}
+.svc .nm{display:flex;align-items:center;gap:8px;font-weight:600}
+.svc .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.svc .fig{font-size:22px;font-weight:500;line-height:1.2}
+.svc .fig.off{font-family:var(--f-body);font-size:15px;color:var(--muted);font-weight:500}
+.svc .det{font-size:13px;color:var(--muted)}
+.svc a{color:var(--accent);font-size:13px;font-weight:500}
+.dz-top{margin-top:18px}
+.dz-top h3{font-size:15px;margin-bottom:10px}
+.dz-top ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.dz-top li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center}
+.dz-top li small{color:var(--muted);margin-left:6px}
+.dz-top a{color:inherit;text-decoration:none;font-weight:500}
+.dz-top a:hover{text-decoration:underline}
+
 /* peers */
 .peers td:first-child{font-weight:500}
 .peers tr.me td{background:var(--accent-soft)}
@@ -221,10 +237,16 @@ body.live .sample-only{display:none}
       <div class="events" id="events"></div>
     </section>
 
+    <section class="panel" aria-label="Streaming services" id="streaming" hidden>
+      <header><h2>Streaming services</h2><span class="sub">What each service makes public</span></header>
+      <div class="svc" id="svc"></div>
+      <div class="dz-top" id="dz-top"></div>
+    </section>
+
     <section class="panel" aria-label="Data sources" id="live-sources" hidden>
       <header><h2>Where this data comes from</h2><span class="sub" id="tracked-since"></span></header>
       <ul class="srcs" id="srcs"></ul>
-      <div class="callout">Streaming numbers (monthly listeners, top cities, playlists) aren't available from public sources. They'll come from artists connecting their own Spotify for Artists and YouTube Studio accounts.</div>
+      <div class="callout">Spotify, Apple Music, Amazon Music and TIDAL don't publish listener or play counts. Those will come from artists connecting their own Spotify for Artists and Apple Music for Artists accounts.</div>
     </section>
 
     <div class="two sample-only">
@@ -264,24 +286,24 @@ function series(seed,start,trend,vol,bumps){
 const PLATFORMS=[
   {k:"listeners",name:"Spotify monthly listeners",short:"Spotify listeners"},
   {k:"followers",name:"Spotify followers",short:"Spotify followers"},
-  {k:"tiktok",name:"TikTok videos using their sounds",short:"TikTok creates"},
-  {k:"youtube",name:"YouTube views (daily)",short:"YouTube daily views"},
-  {k:"instagram",name:"Instagram followers",short:"Instagram"},
-  {k:"shazam",name:"Shazams (daily)",short:"Shazams"}];
+  {k:"apple",name:"Apple Music plays (daily)",short:"Apple Music plays"},
+  {k:"amazon",name:"Amazon Music plays (daily)",short:"Amazon Music plays"},
+  {k:"deezer",name:"Deezer fans",short:"Deezer fans"},
+  {k:"tidal",name:"TIDAL plays (daily)",short:"TIDAL plays"}];
 const ARTISTS=[
   {id:"kira",name:"Kira Sol",color:"#C2557A",tags:["Alt R&B","Atlanta, GA","Independent"],
    bumps:[[300,.55],[200,.15]],events:[[300,"“Glass Hours” added to a major editorial playlist"],[200,"EP release"]],
-   base:{listeners:[182000,.0034],followers:[41000,.0029],tiktok:[3100,.0052],youtube:[9100,.003],instagram:[58000,.0021],shazam:[620,.004]},seed:11,
+   base:{listeners:[182000,.0034],followers:[41000,.0029],apple:[16000,.0045],amazon:[6200,.003],deezer:[9800,.0021],tidal:[1400,.0035]},seed:11,
    cities:[["Atlanta","US",.17],["Houston","US",.11],["London","UK",.09],["Chicago","US",.08],["Lagos","NG",.07],["Toronto","CA",.05]],
    playlists:[["Fresh Finds R&B","Editorial",412000,"Glass Hours",7,"climb"],["Late Night Feelings","Editorial",1840000,"Glass Hours",38,"new"],["Velvet Mornings","Independent curator",64000,"Undertow",3,"hold"],["Alt R&B Weekly","Algorithmic",230000,"Glass Hours",22,"climb"],["Southern Soul Now","Editorial",188000,"Undertow",41,"drop"]]},
   {id:"juniper",name:"The Juniper Line",color:"#2F8C7A",tags:["Indie folk","Asheville, NC","Signed · Hearthside"],
    bumps:[[150,.2]],events:[[150,"Spring tour announced"]],
-   base:{listeners:[640000,.0006],followers:[210000,.0011],tiktok:[900,-.0012],youtube:[22000,.0002],instagram:[134000,.0007],shazam:[1400,-.0006]},seed:23,
+   base:{listeners:[640000,.0006],followers:[210000,.0011],apple:[52000,-.0004],amazon:[21000,.0002],deezer:[31000,.0007],tidal:[4100,-.0003]},seed:23,
    cities:[["Nashville","US",.08],["Chicago","US",.07],["Denver","US",.065],["Portland","US",.06],["Melbourne","AU",.05],["Asheville","US",.045]],
    playlists:[["Folk & Friends","Editorial",920000,"Low Country",14,"hold"],["Acoustic Commute","Editorial",2100000,"Pine Smoke",61,"drop"],["Front Porch","Independent curator",88000,"Low Country",5,"hold"],["Indie Folk Central","Algorithmic",540000,"Lanterns",33,"new"]]},
   {id:"marlowe",name:"Marlowe Vance",color:"#7A5BD6",tags:["Bedroom pop","Los Angeles, CA","Independent"],
    bumps:[[60,.35]],events:[[60,"Single went viral on TikTok"]],
-   base:{listeners:[410000,-.0012],followers:[88000,.0009],tiktok:[8800,-.004],youtube:[14000,-.0015],instagram:[96000,.0002],shazam:[900,-.002]},seed:37,
+   base:{listeners:[410000,-.0012],followers:[88000,.0009],apple:[23000,-.003],amazon:[8800,-.0015],deezer:[17000,.0002],tidal:[2300,-.0018]},seed:37,
    cities:[["Los Angeles","US",.12],["São Paulo","BR",.08],["Mexico City","MX",.075],["New York","US",.07],["Jakarta","ID",.05],["Manila","PH",.045]],
    playlists:[["Bedroom Pop","Editorial",760000,"Sunburnt",29,"drop"],["Chill Vibes Daily","Algorithmic",3100000,"Sunburnt",88,"drop"],["Soft Pop Diary","Independent curator",41000,"Paper Planes",9,"hold"]]}
 ];
@@ -290,8 +312,8 @@ const PEERS={
   juniper:[["Wren & Harbor",720000,.0008,49],["Cold Creek",410000,.0018,61],["Ida Mae Fields",580000,-.0004,38]],
   marlowe:[["sundae club",380000,.0011,52],["Tomo Aoki",300000,.0024,67],["lilac.hours",450000,-.0018,31]]};
 ARTISTS.forEach((a,ai)=>{a.data={};PLATFORMS.forEach((p,pi)=>{const [s,t]=a.base[p.k];
-  const bump=p.k==="followers"||p.k==="instagram"?a.bumps.map(([d,s])=>[d,s*.35]):a.bumps;
-  a.data[p.k]=series(a.seed*31+pi,s,t,p.k==="tiktok"||p.k==="shazam"?.09:.018,bump)})});
+  const bump=p.k==="followers"||p.k==="deezer"?a.bumps.map(([d,s])=>[d,s*.35]):a.bumps;
+  a.data[p.k]=series(a.seed*31+pi,s,t,p.k==="followers"||p.k==="deezer"||p.k==="listeners"?.018:.05,bump)})});
 
 // ---------- helpers ----------
 const $=id=>document.getElementById(id);
@@ -314,7 +336,7 @@ function spark(vals,w,h,stroke){
 
 function momentum(a,days){
   const g=k=>{const s=a.data[k];return pct(s[364-days],s[364])};
-  const raw=g("listeners")*1.4+g("tiktok")*.5+g("shazam")*.6+g("followers")*.8+g("instagram")*.3;
+  const raw=g("listeners")*1.4+g("apple")*.6+g("followers")*.8+g("deezer")*.3+g("amazon")*.3+g("tidal")*.2;
   return Math.max(4,Math.min(98,Math.round(50+raw*60)))}
 
 // ---------- state ----------
@@ -325,7 +347,7 @@ function save(){try{localStorage.setItem("cuepoint",JSON.stringify({a:state.arti
 // ---------- render ----------
 function render(){
   if(state.live)return renderLive();
-  document.body.classList.remove("live");$("live-sources").hidden=true;
+  document.body.classList.remove("live");$("live-sources").hidden=true;$("streaming").hidden=true;
   document.querySelector('[aria-label="Trend"]').hidden=false;
   $("note").innerHTML=`<b>Sample data</b> These three artists are invented to show the layout. Search any real artist above for live data.`;
   const a=state.artist,D=state.days;
@@ -452,6 +474,13 @@ function liveMetrics(L,D){
     out.push({k:"wiki30",short:"Wikipedia readers / 30 days",name:"Wikipedia page views, rolling 30 days",
       values:r30,dates:d30.map(x=>parseDay(x.d)),last:r30[r30.length-1],change:pct(r30[0]||1,r30[r30.length-1])});
   }
+  const dz=L.streaming&&L.streaming.deezer;
+  if(dz){
+    const h=(dz.history||[]).filter(x=>x.fans!=null),cutoff=new Date(Date.now()-D*86400000);
+    const hr=h.filter(x=>parseDay(x.d)>=cutoff),use=hr.length?hr:[{d:new Date().toISOString().slice(0,10),fans:dz.fans}];
+    const v=use.map(x=>x.fans);
+    out.push({k:"dz",short:"Deezer fans",name:"Deezer fans",values:v,dates:use.map(x=>parseDay(x.d)),last:v[v.length-1],change:v.length>1?pct(v[0]||1,v[v.length-1]):null});
+  }
   return out;
 }
 
@@ -460,6 +489,8 @@ function liveMomentum(L,mets){
   // Same 30-vs-30-day comparison as the "What changed" story, so the verdict and the story agree.
   if(L.wiki&&L.wiki.days.length>=60){const r=L.wiki.days.map(x=>x.v),a=sum(r.slice(-30)),b=sum(r.slice(-60,-30));
     if(a+b>0){score+=Math.max(-40,Math.min(40,pct(b||1,a)*40));have=true}}
+  const dz=mets.find(m=>m.k==="dz");
+  if(dz&&dz.values.length>1){score+=Math.max(-20,Math.min(20,dz.change*800));have=true}
   return have?Math.max(4,Math.min(98,Math.round(score))):null;
 }
 
@@ -501,6 +532,12 @@ function renderLive(){
     if(rd[pi].v>avg*2.5&&rd[pi].v>50)items.push({k:"ev",t:`Biggest spike: <strong>${fmt(rd[pi].v)}</strong> readers on ${mdy(parseDay(rd[pi].d))}, about ${Math.round(rd[pi].v/(avg||1))}× a normal day. Usually a release, news story or viral moment.`});
     else items.push({k:"flat",t:`No big spikes in this period. Attention has been steady, without a breakout moment.`});
   }else items.push({k:"flat",t:`No English Wikipedia page is linked to this artist, so there's no attention history yet.`});
+  const S=L.streaming||{};
+  if(S.apple&&S.apple.entries.length){const e=S.apple.entries,best=e[0];
+    const place=l=>l==="US"||l==="UK"?`the ${l}`:l;
+    const where=e.filter(x=>x.song===best.song).slice(0,3).map(x=>`#${x.pos} in ${place(x.label)}`).join(", ");
+    items.push({k:"up",t:`On Apple Music's Top 100 right now: <strong>${esc(best.song)}</strong> is ${where}.`});}
+  if(S.deezer)items.push({k:"city",t:`<strong>${fmt(S.deezer.fans)}</strong> fans follow them on Deezer${S.deezer.top[0]?`, where their most-played track is <strong>${esc(S.deezer.top[0].title)}</strong>`:""}.`});
   items.push({k:"ev",t:`Cuepoint has tracked them since <strong>${mdy(parseDay(L.tracked_since||new Date().toISOString().slice(0,10)))}</strong>. Daily growth gets sharper as history builds.`});
   const icoStyle={up:["var(--good-soft)","var(--good)","↑"],down:["var(--bad-soft)","var(--bad)","↓"],flat:["var(--flat-soft)","var(--flat)","→"],ev:["var(--accent-soft)","var(--accent)","★"],city:["var(--accent-soft)","var(--accent)","◎"]};
   $("story").innerHTML=items.map(i=>{const s=icoStyle[i.k];return `<li><span class="ico" style="background:${s[0]};color:${s[1]}" aria-hidden="true">${s[2]}</span><p>${i.t}</p></li>`}).join("");
@@ -518,13 +555,41 @@ function renderLive(){
   document.querySelector('[aria-label="Trend"]').hidden=!mets.length;
   if(mets.length)drawLiveChart();
 
+  renderStreaming(L);
+
   // sources
   $("live-sources").hidden=false;
   $("tracked-since").textContent=`Updated ${new Date(L.fetched_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`;
   const src=[[`MusicBrainz`,`Artist identity, genres and official links`,`https://musicbrainz.org/artist/${a.mbid}`]];
   if(L.wiki)src.push([`Wikipedia`,`Daily page views for “${L.wiki.title}”`,L.wiki.url]);
+  if(L.streaming&&L.streaming.deezer)src.push([`Deezer`,`Fans and top tracks, snapshotted daily`,L.streaming.deezer.url]);
+  if(L.streaming&&L.streaming.apple)src.push([`Apple Music charts`,`Top 100 songs in ${L.streaming.apple.checked.join(", ")}`,`https://music.apple.com/us/browse/top-charts`]);
   $("srcs").innerHTML=src.map(([n,w,u])=>`<li><span><strong>${n}</strong> · ${esc(w)}</span><a href="${esc(u)}" target="_blank" rel="noopener">View source</a></li>`).join("")
     +(a.links.length?`<li><span><strong>Official links</strong></span><span>${a.links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.kind==="Website"?linkHost(l.url):l.kind)}</a>`).join(" · ")}</span></li>`:"");
+}
+
+const SVC_COLOR={spotify:"#1DB954",apple:"#FA2D48",amazon:"#00A8E1",tidal:"var(--ink)",deezer:"#A238FF"};
+function renderStreaming(L){
+  const S=L.streaming;$("streaming").hidden=!S;if(!S)return;
+  const open=(u,n)=>u?`<a href="${esc(u)}" target="_blank" rel="noopener">Open on ${n}</a>`:`<span class="det">No ${n} profile linked yet</span>`;
+  const tile=(k,n,fig,det,link,off)=>`<article><div class="nm"><span class="dot" style="background:${SVC_COLOR[k]}" aria-hidden="true"></span>${n}</div><div class="fig ${off?"off":"num"}">${fig}</div><div class="det">${det}</div>${link}</article>`;
+  const t=[];
+  t.push(tile("spotify","Spotify","Not public","Spotify stopped sharing follower and popularity numbers with outside apps in February 2026.",open(S.spotify.url,"Spotify"),true));
+  const ap=S.apple;
+  if(ap&&ap.entries.length){const b=ap.entries[0],n=new Set(ap.entries.map(e=>e.label)).size;
+    t.push(tile("apple","Apple Music",`#${b.pos} in ${b.label}`,`${esc(b.song)} · charting in ${n} of ${ap.checked.length} countries checked (Top 100 songs).`,open(ap.url,"Apple Music")));}
+  else t.push(tile("apple","Apple Music",ap?"Not charting":"Charts unavailable",ap?`Not in the Top 100 songs in ${ap.checked.join(", ")} today.`:"Couldn't reach Apple's chart feeds just now.",open(ap&&ap.url||(L.artist.links.find(l=>l.kind==="Apple Music")||{}).url,"Apple Music"),true));
+  t.push(tile("amazon","Amazon Music","Not public","Amazon's music API is invite-only, so there are no public numbers.",open(S.amazon.url,"Amazon Music"),true));
+  t.push(tile("tidal","TIDAL","Not public","TIDAL keeps its popularity data for its own apps.",open(S.tidal.url,"TIDAL"),true));
+  const dz=S.deezer;
+  if(dz){const h=(dz.history||[]).filter(x=>x.fans!=null);let ch="";
+    if(h.length>1){const c=pct(h[0].fans||1,h[h.length-1].fans),d=dir(c);ch=` · <span class="chip ${d}">${arrow(d)} ${pctTxt(c)}</span> since ${mdy(parseDay(h[0].d))}`}
+    t.push(tile("deezer","Deezer",`${fmt(dz.fans)} fans`,`${dz.albums} releases${ch}`,open(dz.url,"Deezer")));}
+  else t.push(tile("deezer","Deezer","Not found","We couldn't match this artist on Deezer.",open(null,"Deezer"),true));
+  $("svc").innerHTML=t.join("");
+  if(dz&&dz.top.length){const mx=dz.top[0].rank||1;
+    $("dz-top").innerHTML=`<h3>Most played on Deezer</h3><ol>${dz.top.map(x=>`<li><span><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>${x.album?`<small>${esc(x.album)}</small>`:""}</span><span class="sub num">${Math.round(x.rank/mx*100)}</span><span class="meter"><i style="width:${Math.max(4,x.rank/mx*100)}%"></i></span></li>`).join("")}</ol><p class="sub" style="margin:10px 0 0">Bars compare each track's Deezer popularity score to their top track (100).</p>`;
+  }else $("dz-top").innerHTML="";
 }
 
 function drawLiveChart(){

@@ -6,7 +6,7 @@ Music analytics dashboard with a plain-English UI. Runs on Cloudflare Workers (s
 
 - `src/worker.js` — Worker entry: routes `/api/*` to the handlers below, serves `public/` for everything else, and runs the hourly snapshot cron
 - `public/index.html` — the dashboard (sample artists plus live search)
-- `functions/api/artist.js` — `/api/artist?q=<name>`: live lookup (MusicBrainz, Wikipedia pageviews) + daily snapshot
+- `functions/api/artist.js` — `/api/artist?q=<name>`: live lookup (MusicBrainz, Wikipedia pageviews, Deezer, Apple Music charts) + daily snapshot
 - `functions/api/tracked.js` — `/api/tracked`: artists looked up so far
 - `functions/api/collect.js` — `/api/collect`: refreshes today's snapshot for up to 10 tracked artists per call
 - `functions/_lib.js` — shared data-source and storage code
@@ -33,4 +33,10 @@ Check it's live: `https://cuepoint.<your-subdomain>.workers.dev/api/health`
 |---|---|---|
 | MusicBrainz | identity, genres, official links | CC0, ~1 request/second |
 | Wikipedia pageviews | daily page views, 1 year of history | open |
+| Deezer | fans (snapshotted daily), top tracks | public API, no key |
+| Apple Music charts | Top 100 songs in US, UK, CA, AU, DE, MX | public RSS feeds, no key |
+
+Spotify, Amazon Music and TIDAL are linked from each artist page but give no public stats:
+Spotify removed followers/popularity for new developer apps in Feb 2026, Amazon's music API is
+invite-only, and TIDAL reserves popularity for its own apps and forbids storing its data.
 

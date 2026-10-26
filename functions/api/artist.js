@@ -1,7 +1,8 @@
 // GET /api/artist?q=<name>   or   /api/artist?mbid=<MusicBrainz ID>
 // Looks the artist up, records today's snapshot, and returns everything the dashboard needs.
 import {
-  json, sleep, searchArtists, getArtist, getWikiTitle, getPageviews, saveArtist, saveSnapshot,
+  json, sleep, searchArtists, getArtist, getWikiTitle, getPageviews, getStreaming,
+  saveArtist, saveSnapshot, saveDeezerId, getHistory,
 } from "../_lib.js";
 
 const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,18 +32,28 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
     const artist = await getArtist(mbid);
     const wikiTitle = await getWikiTitle(artist.wikidata).catch(() => null);
-    const wiki = await getPageviews(wikiTitle).catch(() => null);
+    const [wiki, streaming] = await Promise.all([
+      getPageviews(wikiTitle).catch(() => null),
+      getStreaming(artist, waitUntil).catch(() => null),
+    ]);
 
     const firstSeen = await saveArtist(env, artist, wikiTitle);
     if (wiki) {
       const last30 = wiki.days.slice(-30).reduce((s, x) => s + x.v, 0);
       await saveSnapshot(env, artist.mbid, "wikipedia", { views_30d: last30 });
     }
+    const dz = streaming && streaming.deezer;
+    if (dz) {
+      await saveDeezerId(env, artist.mbid, dz.id);
+      await saveSnapshot(env, artist.mbid, "deezer", { fans: dz.fans });
+      dz.history = await getHistory(env, artist.mbid, "deezer");
+    }
 
     const body = {
       artist,
       matches: matches.slice(1),
       wiki,
+      streaming,
       tracked_since: firstSeen,
       storage_enabled: !!env.DB,
       fetched_at: new Date().toISOString(),
