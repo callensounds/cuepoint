@@ -9,27 +9,31 @@
 <style>
 /* Layout: sticky control bar, then summary-first column — verdict, platform pulse, one big chart, then audience + playlists side by side, then peers. */
 :root{
-  --bg:#F2F4F7; --surface:#FFFFFF; --sunk:#E8ECF2; --ink:#141C28; --muted:#5A6779; --line:#D6DCE5;
-  --accent:#2C55E0; --accent-soft:#E3E9FD; --warm:#D9822B;
-  --good:#1F8A5B; --good-soft:#DDF2E7; --bad:#C2413A; --bad-soft:#F8E1DF; --flat:#6B7688; --flat-soft:#E7EAEF;
+  /* Cool, upbeat palette: aqua/teal accent, mint for growth, violet for moments. */
+  --bg:#EDF7F7; --surface:#FFFFFF; --sunk:#DFF0F1; --ink:#0E2A33; --muted:#4A6873; --line:#CBE3E5;
+  --accent:#0A7080; --accent-soft:#D3F1F3; --warm:#6D5BF0;
+  --brand-a:#12B5C4; --brand-b:#3FD9A0; --glow:rgb(18 181 196 / .14);
+  --good:#0A7553; --good-soft:#D6F5EA; --bad:#B8343F; --bad-soft:#FCE3E5; --flat:#4E6670; --flat-soft:#E3EEF0;
   --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
   --r:10px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0E131A; --surface:#161D27; --sunk:#1D2532; --ink:#E6EBF2; --muted:#94A1B4; --line:#2A3443;
-  --accent:#7B98FF; --accent-soft:#1F2A47; --warm:#F0A55A;
-  --good:#4CC28B; --good-soft:#163428; --bad:#F07A72; --bad-soft:#3A1E1D; --flat:#9AA5B6; --flat-soft:#232C39;
+  --bg:#08181E; --surface:#0F242C; --sunk:#153139; --ink:#E3F6F7; --muted:#8DB2BA; --line:#21414A;
+  --accent:#3CD3DE; --accent-soft:#0E3B43; --warm:#A898FF;
+  --brand-a:#22C7D6; --brand-b:#4FE0A9; --glow:rgb(60 211 222 / .10);
+  --good:#4FE0A9; --good-soft:#113A2F; --bad:#FF8088; --bad-soft:#3E1C22; --flat:#95ADB5; --flat-soft:#1B353C;
   color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0E131A; --surface:#161D27; --sunk:#1D2532; --ink:#E6EBF2; --muted:#94A1B4; --line:#2A3443;
-  --accent:#7B98FF; --accent-soft:#1F2A47; --warm:#F0A55A;
-  --good:#4CC28B; --good-soft:#163428; --bad:#F07A72; --bad-soft:#3A1E1D; --flat:#9AA5B6; --flat-soft:#232C39;
+  --bg:#08181E; --surface:#0F242C; --sunk:#153139; --ink:#E3F6F7; --muted:#8DB2BA; --line:#21414A;
+  --accent:#3CD3DE; --accent-soft:#0E3B43; --warm:#A898FF;
+  --brand-a:#22C7D6; --brand-b:#4FE0A9; --glow:rgb(60 211 222 / .10);
+  --good:#4FE0A9; --good-soft:#113A2F; --bad:#FF8088; --bad-soft:#3E1C22; --flat:#95ADB5; --flat-soft:#1B353C;
   color-scheme:dark}
 
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body{background:radial-gradient(1200px 520px at 15% -120px,var(--glow),transparent 70%) no-repeat,var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
 h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;font-weight:700}
 .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
@@ -153,7 +157,7 @@ body.live .sample-only{display:none}
 <div class="bar">
   <div class="wrap">
     <div class="brand">
-      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="7" fill="var(--accent)"/><path d="M6 15h3l2-6 3 10 2-6h4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><defs><linearGradient id="brandg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--brand-a)"/><stop offset="1" stop-color="var(--brand-b)"/></linearGradient></defs><rect width="26" height="26" rx="7" fill="url(#brandg)"/><path d="M6 15h3l2-6 3 10 2-6h4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Cuepoint
     </div>
     <label class="search" for="artist-search">
