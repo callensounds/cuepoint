@@ -60,7 +60,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
       storage_enabled: !!env.DB,
       fetched_at: new Date().toISOString(),
     };
-    const resp = json(body, 200, { "Cache-Control": "public, max-age=300, s-maxage=21600" } // browsers: 5 min; edge cache: 6 h);
+    // Browsers keep it 5 minutes; Cloudflare's edge cache keeps it 6 hours.
+    const resp = json(body, 200, { "Cache-Control": "public, max-age=300, s-maxage=21600" });
     waitUntil(cache.put(cacheKey, resp.clone()));
     return resp;
   } catch (e) {
