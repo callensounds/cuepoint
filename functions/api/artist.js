@@ -5,6 +5,7 @@ import {
   saveArtist, saveSnapshot, saveDeezerId, getHistory,
 } from "../_lib.js";
 
+const CACHE_V = 2;
 const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function onRequestGet({ request, env, waitUntil }) {
@@ -16,7 +17,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   const cache = caches.default;
   const cacheKey = new Request(
-    `${u.origin}/api/artist?${mbid ? "mbid=" + mbid.toLowerCase() : "q=" + encodeURIComponent(q.toLowerCase())}`
+    // Bump CACHE_V whenever the response shape changes, so stale cached lookups aren't served.
+    `${u.origin}/api/artist?v=${CACHE_V}&${mbid ? "mbid=" + mbid.toLowerCase() : "q=" + encodeURIComponent(q.toLowerCase())}`
   );
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
