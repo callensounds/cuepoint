@@ -603,10 +603,11 @@ function drawLiveChart(){
 
 // ---------- lookups ----------
 function setStatus(html,err){const s=$("status");if(!html){s.hidden=true;return}s.hidden=false;s.className="status-line"+(err?" err":"");s.innerHTML=html}
+const API_V=3; // bump with CACHE_V in functions/api/artist.js so browsers drop old cached lookups
 async function lookup(params,label){
   setStatus(`Looking up <strong>${esc(label)}</strong>…`);document.body.classList.add("loading");
   try{
-    const r=await fetch("/api/artist?"+new URLSearchParams(params));
+    const r=await fetch("/api/artist?"+new URLSearchParams({...params,v:API_V}));
     const d=await r.json().catch(()=>({error:"The server sent back something unexpected."}));
     if(!r.ok||d.error)throw new Error(d.error||`Lookup failed (${r.status}).`);
     state.live=d;state.metric="wiki";
