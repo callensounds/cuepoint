@@ -126,7 +126,7 @@ export async function getPageviews(title) {
 // so for those we only surface the artist's profile link (from MusicBrainz).
 
 const linkFor = (artist, kind) => (artist.links.find((l) => l.kind === kind) || {}).url || null;
-const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 async function deezer(path) {
   const d = await getJSON(`https://api.deezer.com/${path}`);
@@ -195,7 +195,7 @@ export async function getAppleCharts(artist, waitUntil) {
   const appleId = m ? m[1] : null;
   const me = norm(artist.name);
   // Credits like "Artist A & Artist B" or "A, B": count the artist if they're one of the named artists.
-  const credited = (s) => norm(s) === me || String(s).split(/\s*(?:,|&|\bx\b|\bfeat\.?|\bwith\b)\s*/i).some((p) => norm(p) === me);
+  const credited = (s) => norm(s) === me || String(s).split(/\s*(?:,|&|\sx\s|\bfeat\.?|\bwith\b)\s*/i).some((p) => norm(p) === me);
   const failed = [];
   const lists = await Promise.all(
     CHART_COUNTRIES.map(([c]) =>

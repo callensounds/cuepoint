@@ -6,6 +6,9 @@ import * as artist from "../functions/api/artist.js";
 import * as tracked from "../functions/api/tracked.js";
 import * as collect from "../functions/api/collect.js";
 import * as health from "../functions/api/health.js";
+import * as charts from "../functions/api/charts.js";
+import * as crawl from "../functions/api/crawl.js";
+import { crawlStep } from "../functions/_charts.js";
 import { json } from "../functions/_lib.js";
 
 const ROUTES = {
@@ -13,6 +16,8 @@ const ROUTES = {
   "/api/tracked": tracked,
   "/api/collect": collect,
   "/api/health": health,
+  "/api/charts": charts,
+  "/api/crawl": crawl,
 };
 
 export default {
@@ -29,9 +34,14 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  // Hourly cron: refresh today's snapshot for up to 10 tracked artists per run,
-  // so every tracked artist gets a daily data point without anyone pinging /api/collect.
+  // Two hourly jobs (see [triggers] in wrangler.toml):
+  //   :37 — chart crawl step (Apple Music + Deezer charts, Deezer fans for charting artists)
+  //   :07 — daily snapshot for up to 10 searched artists (Wikipedia + Deezer)
   async scheduled(event, env, ctx) {
+    if (event.cron === "37 * * * *") {
+      ctx.waitUntil(crawlStep(env).catch((e) => console.error("crawl failed", e)));
+      return;
+    }
     const request = new Request("https://cuepoint.internal/api/collect");
     ctx.waitUntil(collect.onRequestGet({ request, env, waitUntil: (p) => ctx.waitUntil(p) }));
   },

@@ -15,7 +15,8 @@ export async function onRequestGet({ env }) {
       getPageviews(a.wiki_title).catch(() => null),
       getDeezer(a.deezer_id).catch(() => null),
     ]);
-    if (dz) await saveSnapshot(env, a.mbid, "deezer", { fans: dz.fans });
+    if (dz) await env.DB.prepare("INSERT OR REPLACE INTO deezer_fans (deezer_id, day, name, fans) VALUES (?, ?, ?, ?)")
+      .bind(dz.id, day, a.name, dz.fans).run();
     if (wiki) await saveSnapshot(env, a.mbid, "wikipedia", { views_30d: wiki.days.slice(-30).reduce((s, x) => s + x.v, 0) });
     await env.DB.prepare("UPDATE artists SET last_collected=? WHERE mbid=?").bind(day, a.mbid).run();
     done.push(a.name);

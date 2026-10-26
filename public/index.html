@@ -138,6 +138,35 @@ td.r,th.r{text-align:right}
 .svc .det{font-size:13px;color:var(--muted)}
 .svc a{color:var(--accent);font-size:13px;font-weight:500}
 .dz-top{margin-top:18px}
+/* charts view */
+.view-seg button{font-size:13.5px}
+.ch-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.ch-head h1{font-size:clamp(24px,3.6vw,34px);letter-spacing:-.02em;line-height:1.1;margin-top:4px}
+.ch-head p{margin:6px 0 0}
+.ch-three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.rank{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.rank li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;background:var(--sunk)}
+.rank .p{font-family:var(--f-mono);font-weight:500;color:var(--muted);text-align:right}
+.rank .t{min-width:0}
+.rank .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank .t small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank .empty{background:transparent;padding:0;display:block;color:var(--muted);font-size:13.5px}
+.alink{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:500;cursor:pointer;text-align:left}
+.alink:hover{text-decoration:underline}
+.ch-pick select{font:inherit;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:6px 10px;max-width:100%}
+.chart-tbl td.pos{font-family:var(--f-mono);font-weight:500;width:44px}
+.chart-tbl .ttl{font-weight:600}
+.chart-tbl .ttl a{color:inherit;text-decoration:none}
+.chart-tbl .ttl a:hover{text-decoration:underline}
+.chart-tbl .by{display:block;font-size:12.5px}
+.ch-art{margin-top:20px;display:grid;gap:12px}
+.ch-art h3{font-size:15px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:12.5px;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--ink)}
+.pill b{font-family:var(--f-mono);font-weight:500;color:var(--accent);margin-right:4px}
+body.view-charts #artist-view,body.view-charts #range{display:none}
+body:not(.view-charts) #charts-view{display:none}
+@media (max-width:860px){.ch-three{grid-template-columns:minmax(0,1fr)}}
 .dz-top h3{font-size:15px;margin-bottom:10px}
 .dz-top ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .dz-top li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center}
@@ -181,6 +210,10 @@ body.live .sample-only{display:none}
       <input id="artist-search" list="artist-list" placeholder="Search any artist" autocomplete="off">
       <datalist id="artist-list"></datalist>
     </label>
+    <div class="seg view-seg" role="group" aria-label="View" id="view">
+      <button data-v="charts" aria-pressed="true">Charts</button>
+      <button data-v="artist" aria-pressed="false">Artists</button>
+    </div>
     <div class="seg" role="group" aria-label="Time range" id="range">
       <button data-d="28" aria-pressed="false">28 days</button>
       <button data-d="90" aria-pressed="true">90 days</button>
@@ -192,7 +225,29 @@ body.live .sample-only{display:none}
 <div class="wrap">
   <div class="note" id="note"></div>
   <div class="status-line" id="status" hidden></div>
-  <main>
+  <main id="charts-view" aria-label="Charts">
+    <section class="panel ch-head">
+      <div>
+        <div class="label">Charts</div>
+        <h1>What's charting today</h1>
+        <p class="sub" id="ch-sub">Loading charts…</p>
+      </div>
+    </section>
+    <div class="ch-three">
+      <section class="panel"><header><h2>On the most charts</h2></header><ol class="rank" id="ch-most"></ol></section>
+      <section class="panel"><header><h2>New entries</h2></header><ol class="rank" id="ch-new"></ol></section>
+      <section class="panel"><header><h2>Biggest climbers</h2></header><ol class="rank" id="ch-up"></ol></section>
+    </div>
+    <section class="panel">
+      <header><h2 id="feed-title">Chart</h2><label class="ch-pick"><span class="sr" hidden>Pick a chart</span><select id="feed-pick" aria-label="Pick a chart"></select></label></header>
+      <div class="tbl"><table class="chart-tbl">
+        <thead><tr><th class="r">#</th><th>Move</th><th>Title</th><th class="r">Peak</th><th class="r">Days</th></tr></thead>
+        <tbody id="feed-rows"></tbody>
+      </table></div>
+    </section>
+  </main>
+
+  <main id="artist-view">
     <section class="panel hero" aria-label="Summary">
       <div>
         <div class="who">
@@ -240,6 +295,7 @@ body.live .sample-only{display:none}
     <section class="panel" aria-label="Streaming services" id="streaming" hidden>
       <header><h2>Streaming services</h2><span class="sub">What each service makes public</span></header>
       <div class="svc" id="svc"></div>
+      <div class="ch-art" id="ch-art"></div>
       <div class="dz-top" id="dz-top"></div>
     </section>
 
@@ -575,8 +631,15 @@ function renderStreaming(L){
   const tile=(k,n,fig,det,link,off)=>`<article><div class="nm"><span class="dot" style="background:${SVC_COLOR[k]}" aria-hidden="true"></span>${n}</div><div class="fig ${off?"off":"num"}">${fig}</div><div class="det">${det}</div>${link}</article>`;
   const t=[];
   t.push(tile("spotify","Spotify","Not public","Spotify stopped sharing follower and popularity numbers with outside apps in February 2026.",open(S.spotify.url,"Spotify"),true));
+  const C=L.charts;
+  const appleNow=C?C.now.filter(e=>e.source==="apple"):[];
+  const apUrl=(S.apple&&S.apple.url)||(L.artist.links.find(l=>l.kind==="Apple Music")||{}).url;
   const ap=S.apple;
-  if(ap&&ap.entries.length){const b=ap.entries[0],n=new Set(ap.entries.map(e=>e.label)).size;
+  if(appleNow.length){const b=appleNow[0],where=b.label.split(" · ").pop(),kind=b.chart==="albums"?"albums":"songs";
+    const n=new Set(appleNow.map(e=>e.region)).size;
+    t.push(tile("apple","Apple Music",`#${b.pos} in ${where}`,`${esc(b.title)} · Top ${kind}. On ${appleNow.length} Apple chart${appleNow.length>1?"s":""} in ${n} countr${n>1?"ies":"y"} today.`,open(apUrl,"Apple Music")));}
+  else if(C&&C.days_tracked)t.push(tile("apple","Apple Music","Not charting",`Not in Apple Music's Top 100 songs or albums in any of the 10 countries we crawl.`,open(apUrl,"Apple Music"),true));
+  else if(ap&&ap.entries.length){const b=ap.entries[0],n=new Set(ap.entries.map(e=>e.label)).size;
     t.push(tile("apple","Apple Music",`#${b.pos} in ${b.label}`,(()=>{const songs=new Set(ap.entries.map(e=>e.song)).size;return `${esc(b.song)} · ${songs>1?`${songs} songs in the Top 100, `:""}charting in ${n} of ${ap.checked.length} countries checked.`})(),open(ap.url,"Apple Music")));}
   else t.push(tile("apple","Apple Music",ap?"Not charting":"Charts unavailable",ap?`Not in the Top 100 songs in ${ap.checked.length>1?ap.checked.slice(0,-1).join(", ")+" or "+ap.checked[ap.checked.length-1]:ap.checked[0]} today.`:"Couldn't reach Apple's chart feeds just now.",open(ap&&ap.url||(L.artist.links.find(l=>l.kind==="Apple Music")||{}).url,"Apple Music"),true));
   t.push(tile("amazon","Amazon Music","Not public","Amazon's music API is invite-only, so there are no public numbers.",open(S.amazon.url,"Amazon Music"),true));
@@ -587,6 +650,13 @@ function renderStreaming(L){
     t.push(tile("deezer","Deezer",`${fmt(dz.fans)} fans`,`${dz.albums} releases${ch}`,open(dz.url,"Deezer")));}
   else t.push(tile("deezer","Deezer","Not found","We couldn't match this artist on Deezer.",open(null,"Deezer"),true));
   $("svc").innerHTML=t.join("");
+  // chart history from the daily crawl
+  if(C&&C.days_tracked){
+    const now=C.now.slice(0,14).map(e=>`<span class="pill"><b>#${e.pos}</b>${esc(e.label.replace(/^Apple Music · |^Deezer · /,(m)=>m.startsWith("Apple")?"Apple · ":"Deezer · ").replace("Top tracks · ","").replace("Top songs · ","songs · ").replace("Top albums · ","albums · "))}</span>`).join("");
+    const hist=C.history.length?`<div class="tbl"><table><thead><tr><th>Title</th><th>Best position</th><th class="r">Days charting</th></tr></thead><tbody>${C.history.map(h=>`<tr><td class="pl">${esc(h.title)}<small>${h.source==="apple"?"Apple Music "+h.chart:"Deezer"}</small></td><td><span class="num">#${h.peak}</span> <span class="sub">${esc(h.peak_label.split(" · ").pop())}</span></td><td class="r num">${h.days}</td></tr>`).join("")}</tbody></table></div>`:"";
+    $("ch-art").innerHTML=`<h3>On the charts</h3>`+(C.now.length?`<div class="pills">${now}${C.now.length>14?`<span class="pill">+${C.now.length-14} more</span>`:""}</div>`:`<p class="sub" style="margin:0">Not on any chart we crawl today.</p>`)
+      +hist+`<p class="sub" style="margin:0">Cuepoint has crawled Apple Music and Deezer charts for ${C.days_tracked} day${C.days_tracked>1?"s":""}. History builds every day.</p>`;
+  }else $("ch-art").innerHTML="";
   if(dz&&dz.top.length){const mx=dz.top[0].rank||1;
     $("dz-top").innerHTML=`<h3>Most played on Deezer</h3><ol>${dz.top.map(x=>`<li><span><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>${x.album?`<small>${esc(x.album)}</small>`:""}</span><span class="sub num">${Math.round(x.rank/mx*100)}</span><span class="meter"><i style="width:${Math.max(4,x.rank/mx*100)}%"></i></span></li>`).join("")}</ol><p class="sub" style="margin:10px 0 0">Bars compare each track's Deezer popularity score to their top track (100).</p>`;
   }else $("dz-top").innerHTML="";
@@ -603,7 +673,7 @@ function drawLiveChart(){
 
 // ---------- lookups ----------
 function setStatus(html,err){const s=$("status");if(!html){s.hidden=true;return}s.hidden=false;s.className="status-line"+(err?" err":"");s.innerHTML=html}
-const API_V=3; // bump with CACHE_V in functions/api/artist.js so browsers drop old cached lookups
+const API_V=4; // bump with CACHE_V in functions/api/artist.js so browsers drop old cached lookups
 async function lookup(params,label){
   setStatus(`Looking up <strong>${esc(label)}</strong>…`);document.body.classList.add("loading");
   try{
@@ -626,13 +696,67 @@ async function loadTracked(){
   $("artist-list").innerHTML=[...ARTISTS.map(a=>a.name+" (sample)"),...tracked.map(t=>t.name)].map(n=>`<option value="${esc(n)}">`).join("");
 }
 
+// ---------- charts view ----------
+const splitCredit=c=>String(c||"").split(/\s*(?:,|&|\sx\s|\bfeat\.?|\bft\.?|\bwith\b)\s*/i).map(x=>x.trim()).filter(Boolean);
+const artistBtns=c=>{const parts=splitCredit(c);return parts.length?parts.map(n=>`<button class="alink" data-artist="${esc(n)}">${esc(n)}</button>`).join(", "):esc(c)};
+const shortLabel=l=>String(l||"").replace("Apple Music · Top songs · ","Apple songs · ").replace("Apple Music · Top albums · ","Apple albums · ").replace("Deezer · Top tracks · ","Deezer · ");
+const longDate=d=>parseDay(d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+let chartsLoaded=false,feedReq=0;
+function moveChip(prev,pos,hasPrev){
+  if(!hasPrev)return `<span class="chip flat">–</span>`;
+  if(prev==null)return `<span class="status new">New</span>`;
+  const d=prev-pos;return d>0?`<span class="chip up">▲ ${d}</span>`:d<0?`<span class="chip down">▼ ${-d}</span>`:`<span class="chip flat">■ 0</span>`;
+}
+function wireArtistLinks(root){root.querySelectorAll(".alink").forEach(b=>b.onclick=()=>{setView("artist");lookup({q:b.dataset.artist},b.dataset.artist)})}
+async function loadCharts(){
+  if(chartsLoaded)return;chartsLoaded=true;
+  try{
+    const r=await fetch("/api/charts");const d=await r.json();
+    if(!r.ok||d.error)throw new Error(d.error||"Couldn't load charts.");
+    if(!d.day){$("ch-sub").textContent="The first chart crawl hasn't run yet. It runs every hour, so check back shortly.";return}
+    const nApple=d.feeds.filter(f=>f.source==="apple").length,nDz=d.feeds.filter(f=>f.source==="deezer").length;
+    $("ch-sub").textContent=`${longDate(d.day)} · ${d.feeds.length} charts crawled (${nApple} Apple Music, ${nDz} Deezer)${d.prev?`, compared with ${mdy(parseDay(d.prev))}`:""}.`;
+    const li=(pos,title,sub)=>`<li><span class="p">${pos}</span><span class="t"><b>${title}</b><small>${sub}</small></span></li>`;
+    $("ch-most").innerHTML=d.most.map((a,i)=>`<li><span class="p">${i+1}</span><span class="t"><b><button class="alink" data-artist="${esc(a.artist)}">${esc(a.artist)}</button></b><small>On ${a.charts} chart${a.charts>1?"s":""}${a.entries>a.charts?` with ${a.entries} entries`:""} · best #${a.best}</small></span></li>`).join("");
+    const noPrev=`<li class="empty">Movement shows from the second day of crawling. Check back tomorrow.</li>`;
+    $("ch-new").innerHTML=d.prev?(d.fresh.length?d.fresh.map(x=>`<li><span class="p">#${x.pos}</span><span class="t"><b>${esc(x.title)}</b><small>${artistBtns(x.artist)} · ${esc(shortLabel(x.label))}${x.charts>1?` + ${x.charts-1} more`:""}</small></span><span class="status new">New</span></li>`).join(""):`<li class="empty">No new entries today.</li>`):noPrev;
+    $("ch-up").innerHTML=d.prev?(d.climbers.length?d.climbers.map(x=>`<li><span class="p">#${x.pos}</span><span class="t"><b>${esc(x.title)}</b><small>${artistBtns(x.artist)} · ${esc(shortLabel(x.label))}${x.charts>1?` + ${x.charts-1} more`:""}</small></span><span class="chip up">▲ ${x.prev-x.pos}</span></li>`).join(""):`<li class="empty">Nothing climbed today.</li>`):noPrev;
+    wireArtistLinks($("charts-view"));
+    let saved="apple:songs:us";try{saved=localStorage.getItem("cuepoint-feed")||saved}catch(e){}
+    const groups=[["Apple Music · Top songs","apple:songs"],["Apple Music · Top albums","apple:albums"],["Deezer · Top tracks","deezer:tracks"]];
+    $("feed-pick").innerHTML=groups.map(([g,k])=>{const fs=d.feeds.filter(f=>`${f.source}:${f.chart}`===k);return fs.length?`<optgroup label="${esc(g)}">${fs.map(f=>`<option value="${f.source}:${f.chart}:${f.region}">${esc(f.label.split(" · ").pop())}</option>`).join("")}</optgroup>`:""}).join("");
+    if(!d.feeds.some(f=>`${f.source}:${f.chart}:${f.region}`===saved))saved=d.feeds[0]?`${d.feeds[0].source}:${d.feeds[0].chart}:${d.feeds[0].region}`:"";
+    $("feed-pick").value=saved;$("feed-pick").onchange=e=>{try{localStorage.setItem("cuepoint-feed",e.target.value)}catch(err){}loadFeed(e.target.value)};
+    if(saved)loadFeed(saved);
+  }catch(e){chartsLoaded=false;$("ch-sub").textContent=e.message}
+}
+async function loadFeed(key){
+  const my=++feedReq;$("feed-rows").innerHTML=`<tr><td colspan="5" class="sub">Loading…</td></tr>`;
+  try{
+    const r=await fetch("/api/charts?feed="+encodeURIComponent(key));const d=await r.json();if(my!==feedReq)return;
+    if(!r.ok||d.error)throw new Error(d.error||"Couldn't load this chart.");
+    $("feed-title").textContent=d.label||"Chart";
+    $("feed-rows").innerHTML=d.entries.map(x=>`<tr><td class="pos r">${x.pos}</td><td>${moveChip(x.prev,x.pos,!!d.prev)}</td><td><span class="ttl">${x.url?`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}</span><span class="by">${artistBtns(x.artist)}</span></td><td class="r num">#${x.peak}</td><td class="r num">${x.days}</td></tr>`).join("")||`<tr><td colspan="5" class="sub">This chart is empty today.</td></tr>`;
+    wireArtistLinks($("feed-rows"));
+  }catch(e){if(my===feedReq)$("feed-rows").innerHTML=`<tr><td colspan="5" class="sub">${esc(e.message)}</td></tr>`}
+}
+function setView(v){
+  document.body.classList.toggle("view-charts",v==="charts");
+  document.querySelectorAll("#view button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));
+  try{localStorage.setItem("cuepoint-view",v)}catch(e){}
+  if(v==="charts"){$("note").innerHTML=`<b class="live">Live charts</b> Apple Music and Deezer charts, crawled every day.`;setStatus("");loadCharts()}
+  else render();
+}
+
 // ---------- controls ----------
+document.querySelectorAll("#view button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
 $("artist-list").innerHTML=ARTISTS.map(a=>`<option value="${esc(a.name)} (sample)">`).join("");
 $("artist-search").addEventListener("change",e=>{
   const raw=e.target.value.trim();if(!raw)return;
   const q=raw.replace(/ \(sample\)$/,"").toLowerCase();
   const a=ARTISTS.find(x=>x.name.toLowerCase()===q);
   e.target.value="";
+  setView("artist");
   if(a){state.live=null;state.artist=a;state.metric="listeners";setStatus("");try{localStorage.removeItem("cuepoint-live")}catch(err){}save();render();return}
   const t=tracked.find(x=>x.name.toLowerCase()===q);
   lookup(t?{mbid:t.mbid}:{q:raw},raw);
@@ -641,9 +765,10 @@ document.querySelectorAll("#range button").forEach(b=>b.onclick=()=>{state.days=
 let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(drawMain,120)});
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",render);
 new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
-render();
+let startView="charts";try{startView=localStorage.getItem("cuepoint-view")||"charts"}catch(e){}
+setView(startView);
 loadTracked();
-try{const lm=localStorage.getItem("cuepoint-live");if(lm)lookup({mbid:lm},"your last artist")}catch(e){}
+try{const lm=localStorage.getItem("cuepoint-live");if(lm&&startView==="artist")lookup({mbid:lm},"your last artist")}catch(e){}
 </script>
 </body>
 </html>

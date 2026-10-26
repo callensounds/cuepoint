@@ -2,10 +2,11 @@
 // Looks the artist up, records today's snapshot, and returns everything the dashboard needs.
 import {
   json, sleep, searchArtists, getArtist, getWikiTitle, getPageviews, getStreaming,
-  saveArtist, saveSnapshot, saveDeezerId, getHistory,
+  saveArtist, saveSnapshot, saveDeezerId,
 } from "../_lib.js";
+import { artistCharts, deezerFanHistory } from "../_charts.js";
 
-const CACHE_V = 3;
+const CACHE_V = 4;
 const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function onRequestGet({ request, env, waitUntil }) {
@@ -47,15 +48,20 @@ export async function onRequestGet({ request, env, waitUntil }) {
     const dz = streaming && streaming.deezer;
     if (dz) {
       await saveDeezerId(env, artist.mbid, dz.id);
-      await saveSnapshot(env, artist.mbid, "deezer", { fans: dz.fans });
-      dz.history = await getHistory(env, artist.mbid, "deezer");
+      if (env.DB) {
+        await env.DB.prepare("INSERT OR REPLACE INTO deezer_fans (deezer_id, day, name, fans) VALUES (?, date('now'), ?, ?)")
+          .bind(dz.id, artist.name, dz.fans).run();
+      }
+      dz.history = await deezerFanHistory(env, dz.id);
     }
+    const charts = await artistCharts(env, artist.name, dz ? dz.id : null).catch(() => null);
 
     const body = {
       artist,
       matches: matches.slice(1),
       wiki,
       streaming,
+      charts,
       tracked_since: firstSeen,
       storage_enabled: !!env.DB,
       fetched_at: new Date().toISOString(),

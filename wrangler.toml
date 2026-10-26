@@ -13,6 +13,7 @@ binding = "DB"
 database_name = "cuepoint"
 database_id = "062a4cf6-c9c6-4eeb-8461-3ae889aae848"
 
-# Refresh daily snapshots for tracked artists (10 per run, skips ones already done today).
+# :07 — refresh daily snapshots for searched artists (10 per run, skips ones already done today)
+# :37 — chart crawl step (Apple Music + Deezer charts; each chart once per day)
 [triggers]
-crons = ["7 * * * *"]
+crons = ["7 * * * *", "37 * * * *"]
