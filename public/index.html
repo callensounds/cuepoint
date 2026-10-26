@@ -577,8 +577,8 @@ function renderStreaming(L){
   t.push(tile("spotify","Spotify","Not public","Spotify stopped sharing follower and popularity numbers with outside apps in February 2026.",open(S.spotify.url,"Spotify"),true));
   const ap=S.apple;
   if(ap&&ap.entries.length){const b=ap.entries[0],n=new Set(ap.entries.map(e=>e.label)).size;
-    t.push(tile("apple","Apple Music",`#${b.pos} in ${b.label}`,`${esc(b.song)} · charting in ${n} of ${ap.checked.length} countries checked (Top 100 songs).`,open(ap.url,"Apple Music")));}
-  else t.push(tile("apple","Apple Music",ap?"Not charting":"Charts unavailable",ap?`Not in the Top 100 songs in ${ap.checked.join(", ")} today.`:"Couldn't reach Apple's chart feeds just now.",open(ap&&ap.url||(L.artist.links.find(l=>l.kind==="Apple Music")||{}).url,"Apple Music"),true));
+    t.push(tile("apple","Apple Music",`#${b.pos} in ${b.label}`,(()=>{const songs=new Set(ap.entries.map(e=>e.song)).size;return `${esc(b.song)} · ${songs>1?`${songs} songs in the Top 100, `:""}charting in ${n} of ${ap.checked.length} countries checked.`})(),open(ap.url,"Apple Music")));}
+  else t.push(tile("apple","Apple Music",ap?"Not charting":"Charts unavailable",ap?`Not in the Top 100 songs in ${ap.checked.length>1?ap.checked.slice(0,-1).join(", ")+" or "+ap.checked[ap.checked.length-1]:ap.checked[0]} today.`:"Couldn't reach Apple's chart feeds just now.",open(ap&&ap.url||(L.artist.links.find(l=>l.kind==="Apple Music")||{}).url,"Apple Music"),true));
   t.push(tile("amazon","Amazon Music","Not public","Amazon's music API is invite-only, so there are no public numbers.",open(S.amazon.url,"Amazon Music"),true));
   t.push(tile("tidal","TIDAL","Not public","TIDAL keeps its popularity data for its own apps.",open(S.tidal.url,"TIDAL"),true));
   const dz=S.deezer;
