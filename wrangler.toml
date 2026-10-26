@@ -16,6 +16,3 @@ database_id = "062a4cf6-c9c6-4eeb-8461-3ae889aae848"
 # Refresh daily snapshots for tracked artists (10 per run, skips ones already done today).
 [triggers]
 crons = ["7 * * * *"]
-
-# Last.fm key is a secret: set LASTFM_KEY in Cloudflare → Workers & Pages → cuepoint →
-# Settings → Variables and Secrets (type: Secret). Never commit it here.

@@ -1,6 +1,6 @@
-// GET /api/collect — refreshes today's Last.fm and Wikipedia snapshot for tracked artists
+// GET /api/collect — refreshes today's Wikipedia snapshot for tracked artists
 // that haven't been collected yet today (10 per call). Safe to call repeatedly; ping it daily.
-import { json, today, getLastfm, getPageviews, saveSnapshot } from "../_lib.js";
+import { json, today, getPageviews, saveSnapshot } from "../_lib.js";
 
 export async function onRequestGet({ env }) {
   if (!env.DB) return json({ error: "Database isn't connected to this site." }, 500);
@@ -11,11 +11,7 @@ export async function onRequestGet({ env }) {
 
   const done = [];
   for (const a of results) {
-    const [lf, wiki] = await Promise.all([
-      getLastfm(env, a.mbid, a.name).catch(() => null),
-      getPageviews(a.wiki_title).catch(() => null),
-    ]);
-    if (lf) await saveSnapshot(env, a.mbid, "lastfm", { listeners: lf.listeners, playcount: lf.playcount });
+    const wiki = await getPageviews(a.wiki_title).catch(() => null);
     if (wiki) await saveSnapshot(env, a.mbid, "wikipedia", { views_30d: wiki.days.slice(-30).reduce((s, x) => s + x.v, 0) });
     await env.DB.prepare("UPDATE artists SET last_collected=? WHERE mbid=?").bind(day, a.mbid).run();
     done.push(a.name);

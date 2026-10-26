@@ -1,8 +1,7 @@
 // GET /api/artist?q=<name>   or   /api/artist?mbid=<MusicBrainz ID>
 // Looks the artist up, records today's snapshot, and returns everything the dashboard needs.
 import {
-  json, sleep, searchArtists, getArtist, getWikiTitle, getPageviews,
-  getLastfm, saveArtist, saveSnapshot, getHistory,
+  json, sleep, searchArtists, getArtist, getWikiTitle, getPageviews, saveArtist, saveSnapshot,
 } from "../_lib.js";
 
 const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,26 +31,19 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
     const artist = await getArtist(mbid);
     const wikiTitle = await getWikiTitle(artist.wikidata).catch(() => null);
-    const [wiki, lastfm] = await Promise.all([
-      getPageviews(wikiTitle).catch(() => null),
-      getLastfm(env, artist.mbid, artist.name).catch(() => null),
-    ]);
+    const wiki = await getPageviews(wikiTitle).catch(() => null);
 
     const firstSeen = await saveArtist(env, artist, wikiTitle);
-    if (lastfm) await saveSnapshot(env, artist.mbid, "lastfm", { listeners: lastfm.listeners, playcount: lastfm.playcount });
     if (wiki) {
       const last30 = wiki.days.slice(-30).reduce((s, x) => s + x.v, 0);
       await saveSnapshot(env, artist.mbid, "wikipedia", { views_30d: last30 });
     }
-    const history = lastfm ? await getHistory(env, artist.mbid, "lastfm") : [];
 
     const body = {
       artist,
       matches: matches.slice(1),
       wiki,
-      lastfm: lastfm ? { ...lastfm, history } : null,
       tracked_since: firstSeen,
-      lastfm_enabled: !!env.LASTFM_KEY,
       storage_enabled: !!env.DB,
       fetched_at: new Date().toISOString(),
     };

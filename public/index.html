@@ -452,15 +452,6 @@ function liveMetrics(L,D){
     out.push({k:"wiki30",short:"Wikipedia readers / 30 days",name:"Wikipedia page views, rolling 30 days",
       values:r30,dates:d30.map(x=>parseDay(x.d)),last:r30[r30.length-1],change:pct(r30[0]||1,r30[r30.length-1])});
   }
-  if(L.lastfm){
-    const h=(L.lastfm.history||[]).filter(x=>x.listeners!=null);
-    const cutoff=new Date(Date.now()-D*86400000);
-    const hr=h.filter(x=>parseDay(x.d)>=cutoff);const use=hr.length?hr:[{d:new Date().toISOString().slice(0,10),listeners:L.lastfm.listeners,playcount:L.lastfm.playcount}];
-    const mk=(k,short,name,f)=>{const v=use.map(f);out.push({k,short,name,values:v,dates:use.map(x=>parseDay(x.d)),last:v[v.length-1],change:v.length>1?pct(v[0]||1,v[v.length-1]):null})};
-    mk("lf_l","Last.fm listeners","Last.fm listeners (all time)",x=>x.listeners);
-    mk("lf_p","Last.fm plays","Last.fm plays (all time)",x=>x.playcount);
-    mk("lf_ppl","Plays per listener","Last.fm plays per listener",x=>x.listeners?x.playcount/x.listeners:0);
-  }
   return out;
 }
 
@@ -469,8 +460,6 @@ function liveMomentum(L,mets){
   // Same 30-vs-30-day comparison as the "What changed" story, so the verdict and the story agree.
   if(L.wiki&&L.wiki.days.length>=60){const r=L.wiki.days.map(x=>x.v),a=sum(r.slice(-30)),b=sum(r.slice(-60,-30));
     if(a+b>0){score+=Math.max(-40,Math.min(40,pct(b||1,a)*40));have=true}}
-  const lf=mets.find(m=>m.k==="lf_l");
-  if(lf&&lf.values.length>1){score+=Math.max(-20,Math.min(20,lf.change*800));have=true}
   return have?Math.max(4,Math.min(98,Math.round(score))):null;
 }
 
@@ -484,7 +473,7 @@ function drawGauge(m){
 function renderLive(){
   const L=state.live,D=state.days,a=L.artist;
   document.body.classList.add("live");
-  $("note").innerHTML=`<b class="live">Live data</b> Public sources, refreshed daily. ${L.lastfm_enabled?"":"Last.fm isn't switched on yet, so only Wikipedia and MusicBrainz data is shown."}`;
+  $("note").innerHTML=`<b class="live">Live data</b> Public sources, refreshed daily.`;
   document.querySelectorAll("#range button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.d===D));
   $("avatar").style.background=hueColor(a.name);$("avatar").textContent=a.name.replace(/^The /,"")[0]||"?";
   $("name").textContent=a.name;
@@ -512,8 +501,6 @@ function renderLive(){
     if(rd[pi].v>avg*2.5&&rd[pi].v>50)items.push({k:"ev",t:`Biggest spike: <strong>${fmt(rd[pi].v)}</strong> readers on ${mdy(parseDay(rd[pi].d))}, about ${Math.round(rd[pi].v/(avg||1))}× a normal day. Usually a release, news story or viral moment.`});
     else items.push({k:"flat",t:`No big spikes in this period. Attention has been steady, without a breakout moment.`});
   }else items.push({k:"flat",t:`No English Wikipedia page is linked to this artist, so there's no attention history yet.`});
-  if(L.lastfm){const p=L.lastfm.playcount/(L.lastfm.listeners||1);
-    items.push({k:"city",t:`<strong>${fmt(L.lastfm.listeners)}</strong> people have played them on Last.fm, <strong>${fmt(L.lastfm.playcount)}</strong> plays in total. That's ${p.toFixed(0)} plays per listener, ${p>=40?"a sign of a devoted core fanbase":p>=15?"a healthy mix of fans and casual listeners":"mostly casual listening so far"}.`});}
   items.push({k:"ev",t:`Cuepoint has tracked them since <strong>${mdy(parseDay(L.tracked_since||new Date().toISOString().slice(0,10)))}</strong>. Daily growth gets sharper as history builds.`});
   const icoStyle={up:["var(--good-soft)","var(--good)","↑"],down:["var(--bad-soft)","var(--bad)","↓"],flat:["var(--flat-soft)","var(--flat)","→"],ev:["var(--accent-soft)","var(--accent)","★"],city:["var(--accent-soft)","var(--accent)","◎"]};
   $("story").innerHTML=items.map(i=>{const s=icoStyle[i.k];return `<li><span class="ico" style="background:${s[0]};color:${s[1]}" aria-hidden="true">${s[2]}</span><p>${i.t}</p></li>`}).join("");
@@ -522,7 +509,7 @@ function renderLive(){
   $("pulse").innerHTML=mets.map(mt=>{const d=mt.change==null?"flat":dir(mt.change);
     const stroke=d==="up"?cssv("--good"):d==="down"?cssv("--bad"):cssv("--flat");
     const chip=mt.change==null?`<span class="chip flat">new</span>`:`<span class="chip ${d}">${arrow(d)} ${pctTxt(mt.change)}</span>`;
-    const val=mt.k==="lf_ppl"?mt.last.toFixed(1):fmt(mt.last);
+    const val=fmt(mt.last);
     const sp=mt.values.length>1?spark(mt.values,160,34,stroke):"";
     return `<button class="card" data-k="${mt.k}" aria-pressed="${mt.k===state.metric}"><div class="top"><span class="plat">${mt.short}</span>${chip}</div><div class="val num">${val}</div><svg viewBox="0 0 160 34" preserveAspectRatio="none" aria-hidden="true">${sp}</svg></button>`}).join("")
     ||`<div class="panel sub">No public stats found for this artist yet.</div>`;
@@ -536,7 +523,6 @@ function renderLive(){
   $("tracked-since").textContent=`Updated ${new Date(L.fetched_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`;
   const src=[[`MusicBrainz`,`Artist identity, genres and official links`,`https://musicbrainz.org/artist/${a.mbid}`]];
   if(L.wiki)src.push([`Wikipedia`,`Daily page views for “${L.wiki.title}”`,L.wiki.url]);
-  if(L.lastfm)src.push([`Last.fm`,`Listeners and plays, snapshotted daily`,L.lastfm.url]);
   $("srcs").innerHTML=src.map(([n,w,u])=>`<li><span><strong>${n}</strong> · ${esc(w)}</span><a href="${esc(u)}" target="_blank" rel="noopener">View source</a></li>`).join("")
     +(a.links.length?`<li><span><strong>Official links</strong></span><span>${a.links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.kind==="Website"?linkHost(l.url):l.kind)}</a>`).join(" · ")}</span></li>`:"");
 }

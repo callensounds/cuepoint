@@ -1,6 +1,5 @@
 // Shared data-collection code. Files starting with "_" are not routes.
-// Sources: MusicBrainz (CC0 identity + links), Wikidata/Wikipedia pageviews (open),
-// Last.fm (optional, needs LASTFM_KEY secret; non-commercial use only without a Last.fm agreement).
+// Sources: MusicBrainz (CC0 identity + links), Wikidata/Wikipedia pageviews (open).
 
 const UA = "Cuepoint/0.1 (+https://github.com/callensounds/cuepoint)";
 const HEADERS = { "User-Agent": UA, Accept: "application/json" };
@@ -115,21 +114,6 @@ export async function getPageviews(title) {
     title,
     url: `https://en.wikipedia.org/wiki/${article}`,
     days,
-  };
-}
-
-// ---------- Last.fm ----------
-export async function getLastfm(env, mbid, name) {
-  const key = env.LASTFM_KEY;
-  if (!key) return null;
-  const base = `https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&api_key=${encodeURIComponent(key)}&format=json`;
-  let d = await getJSON(`${base}&mbid=${mbid}`).catch(() => null);
-  if (!d || d.error) d = await getJSON(`${base}&artist=${encodeURIComponent(name)}&autocorrect=1`).catch(() => null);
-  if (!d || d.error || !d.artist) return null;
-  return {
-    url: d.artist.url,
-    listeners: +d.artist.stats.listeners || 0,
-    playcount: +d.artist.stats.playcount || 0,
   };
 }
 
