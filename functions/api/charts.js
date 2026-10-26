@@ -1,12 +1,13 @@
 // GET /api/charts                              — overview: latest crawl day, available charts, movers, new entries
 // GET /api/charts?feed=apple:songs:us          — one chart with movement, peak and days on chart
 import { json } from "../_lib.js";
-import { chartsOverview, chartFeed } from "../_charts.js";
+import { chartsOverview, chartFeed, crawlIfDue } from "../_charts.js";
 
-export async function onRequestGet({ request, env }) {
+export async function onRequestGet({ request, env, waitUntil }) {
   if (!env.DB) return json({ error: "Database isn't connected to this site." }, 500);
   const feed = new URL(request.url).searchParams.get("feed");
   try {
+    if (!feed) await crawlIfDue(env, waitUntil).catch(() => {});
     if (feed) {
       const [source, chart, region] = feed.split(":");
       if (!source || !chart || !region) return json({ error: "Unknown chart." }, 400);

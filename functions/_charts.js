@@ -143,6 +143,21 @@ export async function crawlStep(env) {
   return out;
 }
 
+// Visitors can nudge the crawl along: if today isn't fully crawled and no step started in the
+// last 2 minutes, run one in the background. The hourly schedule still does the bulk of the work.
+export async function crawlIfDue(env, waitUntil) {
+  if (!env.DB) return;
+  const day = today();
+  const lock = await env.DB.prepare("SELECT at FROM crawl_log WHERE day=? AND feed='step'").bind(day).first();
+  if (lock && Date.now() - Date.parse(lock.at) < 120000) return;
+  const done = await env.DB.prepare("SELECT COUNT(*) AS n FROM crawl_log WHERE day=? AND error IS NULL AND feed NOT IN ('step','deezer:genres')").bind(day).first();
+  const total = APPLE_COUNTRIES.length * 2 + DEEZER_GENRES + 1;
+  if (done && done.n >= total) return;
+  await env.DB.prepare("INSERT OR REPLACE INTO crawl_log (day, feed, n, at, error) VALUES (?, 'step', 0, ?, NULL)")
+    .bind(day, new Date().toISOString()).run();
+  waitUntil(crawlStep(env).catch((e) => console.error("crawl step failed", e)));
+}
+
 // ---------- queries ----------
 async function latestDays(env) {
   const { results } = await env.DB.prepare(
