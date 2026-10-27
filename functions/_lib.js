@@ -15,8 +15,17 @@ export function json(body, status = 200, extra = {}) {
   });
 }
 
-async function getJSON(url) {
-  const r = await fetch(url, { headers: HEADERS });
+// Every outbound request gets a time limit so one slow source can't stall a page.
+export const TIMEOUT_MS = 8000;
+async function getJSON(url, ms = TIMEOUT_MS) {
+  let r;
+  try {
+    r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(ms) });
+  } catch (e) {
+    const err = new Error(`${new URL(url).hostname} didn't answer in time`);
+    err.status = e.name === "TimeoutError" ? 504 : 502;
+    throw err;
+  }
   if (!r.ok) {
     const err = new Error(`${new URL(url).hostname} answered ${r.status}`);
     err.status = r.status;
@@ -225,13 +234,10 @@ export async function getAppleCharts(artist, waitUntil) {
 
 export async function getStreaming(artist, waitUntil) {
   const deezerId = await findDeezerId(artist).catch(() => null);
-  const [dz, apple] = await Promise.all([
-    getDeezer(deezerId).catch(() => null),
-    getAppleCharts(artist, waitUntil).catch(() => null),
-  ]);
+  const dz = await getDeezer(deezerId).catch(() => null);
   return {
     deezer: dz,
-    apple,
+    apple: { url: linkFor(artist, "Apple Music") }, // chart positions come from the daily crawl
     spotify: { url: linkFor(artist, "Spotify") },
     amazon: { url: linkFor(artist, "Amazon Music") },
     tidal: { url: linkFor(artist, "TIDAL") },

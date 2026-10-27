@@ -18,7 +18,7 @@ export const APPLE_COUNTRIES = [
 ];
 
 async function getJSON(url) {
-  const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
+  const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error(`${new URL(url).hostname} answered ${r.status}`);
   const d = await r.json();
   if (d && d.error) throw new Error(`Deezer: ${d.error.message || "error"}`);
@@ -197,7 +197,7 @@ export async function chartsOverview(env) {
   }
   const most = [...byArtist.values()]
     .map((a) => ({ artist: a.artist, entries: a.entries, charts: a.feeds.size, best: a.best }))
-    .sort((x, y) => y.entries - x.entries || x.best - y.best).slice(0, 10);
+    .sort((x, y) => y.charts - x.charts || x.best - y.best || y.entries - x.entries).slice(0, 10);
 
   // One row per song: keep its best chart (highest position / biggest jump) and count the charts it's on.
   const bySong = (list, better) => {

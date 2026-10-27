@@ -6,7 +6,7 @@ import {
 } from "../_lib.js";
 import { artistCharts, deezerFanHistory } from "../_charts.js";
 
-const CACHE_V = 4;
+const CACHE_V = 5;
 const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function onRequestGet({ request, env, waitUntil }) {
@@ -24,21 +24,31 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
+  // Per-step timings, returned in the Server-Timing header to spot slow sources.
+  const marks = [];
+  let last = Date.now();
+  const mark = (name) => { const now = Date.now(); marks.push(`${name};dur=${now - last}`); last = now; };
+
   try {
     let matches = [];
     if (!mbid) {
       matches = await searchArtists(q);
+      mark("mb-search");
       if (!matches.length) return json({ error: `No artist called “${q}” on MusicBrainz. Check the spelling.` }, 404);
       mbid = matches[0].mbid;
       await sleep(1100); // MusicBrainz allows about one request per second
+      mark("mb-wait");
     }
 
     const artist = await getArtist(mbid);
-    const wikiTitle = await getWikiTitle(artist.wikidata).catch(() => null);
+    mark("mb-artist");
     const [wiki, streaming] = await Promise.all([
-      getPageviews(wikiTitle).catch(() => null),
+      getWikiTitle(artist.wikidata).catch(() => null)
+        .then((t) => getPageviews(t).catch(() => null)),
       getStreaming(artist, waitUntil).catch(() => null),
     ]);
+    const wikiTitle = wiki ? wiki.title : null;
+    mark("sources");
 
     const firstSeen = await saveArtist(env, artist, wikiTitle);
     if (wiki) {
@@ -54,7 +64,9 @@ export async function onRequestGet({ request, env, waitUntil }) {
       }
       dz.history = await deezerFanHistory(env, dz.id);
     }
+    mark("save");
     const charts = await artistCharts(env, artist.name, dz ? dz.id : null).catch(() => null);
+    mark("charts");
 
     const body = {
       artist,
@@ -67,14 +79,15 @@ export async function onRequestGet({ request, env, waitUntil }) {
       fetched_at: new Date().toISOString(),
     };
     // Browsers keep it 5 minutes; Cloudflare's edge cache keeps it 6 hours.
-    const resp = json(body, 200, { "Cache-Control": "public, max-age=300, s-maxage=21600" });
+    const resp = json(body, 200, { "Cache-Control": "public, max-age=300, s-maxage=21600", "Server-Timing": marks.join(", ") });
     waitUntil(cache.put(cacheKey, resp.clone()));
     return resp;
   } catch (e) {
-    const busy = e.status === 503 || e.status === 429;
+    const busy = e.status === 503 || e.status === 429 || e.status === 504;
     return json(
-      { error: busy ? "MusicBrainz is busy right now. Try again in a few seconds." : `Lookup failed: ${e.message}. Try again in a minute.` },
-      502
+      { error: busy ? "MusicBrainz is slow or busy right now. Try again in a few seconds." : `Lookup failed: ${e.message}. Try again in a minute.` },
+      502,
+      { "Server-Timing": marks.join(", ") }
     );
   }
 }
