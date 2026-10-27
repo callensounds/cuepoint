@@ -35,9 +35,32 @@ async function getJSON(url, ms = TIMEOUT_MS) {
 }
 
 // ---------- MusicBrainz ----------
+// MusicBrainz rate-limits per IP, and Cloudflare's outbound IPs are shared with many other sites,
+// so it often answers 503 "busy". Retry with backoff, and keep answers for a day in the edge cache.
+async function mbJSON(url) {
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const key = new Request(url.replace("https://musicbrainz.org/", "https://cuepoint.cache/mb/"));
+  if (cache) {
+    const hit = await cache.match(key);
+    if (hit) return hit.json();
+  }
+  const waits = [1200, 2500, 4000];
+  for (let i = 0; ; i++) {
+    try {
+      const d = await getJSON(url);
+      if (cache) await cache.put(key, new Response(JSON.stringify(d), { headers: { "Cache-Control": "public, max-age=86400" } }));
+      return d;
+    } catch (e) {
+      const retryable = e.status === 503 || e.status === 429 || e.status === 504 || e.status === 502;
+      if (!retryable || i >= waits.length) throw e;
+      await sleep(waits[i]);
+    }
+  }
+}
+
 export async function searchArtists(q) {
   const query = `artist:"${q.replace(/"/g, "")}"`;
-  const s = await getJSON(
+  const s = await mbJSON(
     `https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(query)}&limit=5&fmt=json`
   );
   return (s.artists || []).map((a) => ({
@@ -58,7 +81,7 @@ const LINK_KINDS = [
 ];
 
 export async function getArtist(mbid) {
-  const a = await getJSON(
+  const a = await mbJSON(
     `https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels+tags+genres&fmt=json`
   );
   const byCount = (list) => (list || []).slice().sort((x, y) => (y.count || 0) - (x.count || 0)).map((t) => t.name);

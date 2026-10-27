@@ -31,6 +31,11 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   try {
     let matches = [];
+    // Artists Cuepoint already knows skip the MusicBrainz search (it's often rate-limited).
+    if (!mbid && env.DB) {
+      const known = await env.DB.prepare("SELECT mbid FROM artists WHERE name = ? COLLATE NOCASE LIMIT 1").bind(q).first().catch(() => null);
+      if (known) { mbid = known.mbid; mark("known"); }
+    }
     if (!mbid) {
       matches = await searchArtists(q);
       mark("mb-search");
